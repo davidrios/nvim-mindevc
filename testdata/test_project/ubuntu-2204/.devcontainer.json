@@ -1,0 +1,24 @@
+{
+  "name": "xxx",
+  "dockerComposeFile": "../compose.yaml",
+  "service": "ubuntu-2204",
+  "workspaceFolder": "/code",
+  "shutdownAction": "none",
+  "remoteUser": "1000",
+  "otherPortsAttributes": {
+    "onAutoForward": "ignore"
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "matangover.mypy",
+        "charliermarsh.ruff",
+        "ms-python.black-formatter"
+      ]
+    },
+    "neovim-dc": {
+
+    }
+  }
+}

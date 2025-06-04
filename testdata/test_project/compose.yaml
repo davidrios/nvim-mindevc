@@ -1,0 +1,48 @@
+services:
+  ubuntu-2204:
+    image: ubuntu:22.04
+    volumes:
+      - ./ubuntu-2204:/code
+    user: '1000:1000'
+    init: true
+    command: ['sleep', '365d']
+
+  ubuntu-2404:
+    image: ubuntu:24.04
+    volumes:
+      - ./ubuntu-2404:/code
+    user: '1000:1000'
+    init: true
+    command: ['sleep', '365d']
+
+  debian-buster:
+    image: debian:buster
+    volumes:
+      - ./debian-buster:/code
+    user: '1000:1000'
+    init: true
+    command: ['sleep', '365d']
+
+  debian-bookworm:
+    image: debian:bookworm
+    volumes:
+      - ./debian-bookworm:/code
+    user: '1000:1000'
+    init: true
+    command: ['sleep', '365d']
+
+  alpine-321:
+    image: alpine:3.21
+    volumes:
+      - ./alpine-321:/code
+    user: '1000:1000'
+    init: true
+    command: ['sleep', '365d']
+
+  alpine-320:
+    image: alpine:3.20
+    volumes:
+      - ./alpine-320:/code
+    user: '1000:1000'
+    init: true
+    command: ['sleep', '365d']

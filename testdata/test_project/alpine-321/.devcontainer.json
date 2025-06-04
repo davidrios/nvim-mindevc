@@ -1,0 +1,21 @@
+{
+    "name": "xxx",
+    "dockerComposeFile": "../compose.yaml",
+    "service": "alpine-321",
+    "workspaceFolder": "/code",
+    "shutdownAction": "none",
+    "remoteUser": "root",
+    "otherPortsAttributes": {
+        "onAutoForward": "ignore"
+    },
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-python.python",
+                "matangover.mypy",
+                "charliermarsh.ruff",
+                "ms-python.black-formatter"
+            ]
+        }
+    }
+}

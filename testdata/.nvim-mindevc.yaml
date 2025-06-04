@@ -1,0 +1,3 @@
+neovim:
+    config_uri: file://~/.config/nvim
+devcontainer_file: ./test_project/ubuntu-2204/.devcontainer.json
