@@ -1,7 +1,6 @@
 package setup
 
 import (
-	"crypto/sha256"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -18,36 +17,61 @@ func TestDownloadToolHttp_Success(t *testing.T) {
 	}
 	defer os.RemoveAll(dir)
 
-	testContent := "test file content"
-	expectedHash := fmt.Sprintf("%x", sha256.Sum256([]byte(testContent)))
-
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(testContent))
-	}))
-	defer ts.Close()
-
-	filename := "testfile.tar.gz"
-	burl := fmt.Sprintf("%s/%s", ts.URL, filename)
-	parsedUrl, _ := url.Parse(burl)
-	err = DownloadToolHttp(dir, burl, parsedUrl, expectedHash)
-	if err != nil {
-		t.Fatalf("Expected no error, got: %v", err)
+	testTable := []struct {
+		fname    string
+		content  string
+		hash     string
+		hashFail bool
+	}{
+		{
+			fname:   "testfile.tar.gz",
+			content: "test content",
+			hash:    "6ae8a75555209fd6c44157c0aed8016e763ff435a19cf186f76863140143ff72"},
+		{
+			fname:   "testfile2.tar.gz",
+			content: "another content",
+			hash:    "6292c8b17c54333d0449794f91ca2287c29e0adc1bcf06795c54bc6aa1a003e6"},
+		{
+			fname:    "testfile3.tar.gz",
+			content:  "another content",
+			hash:     "5292c8b17c54333d0449794f91ca2287c29e0adc1bcf06795c54bc6aa1a003e6",
+			hashFail: true},
 	}
 
-	expectedPath := filepath.Join(dir, filename)
+	for _, tv := range testTable {
+		t.Run(tv.fname, func(t *testing.T) {
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte(tv.content))
+			}))
+			defer ts.Close()
 
-	if _, err := os.Stat(expectedPath); os.IsNotExist(err) {
-		t.Fatalf("Expected file to be created at %s", expectedPath)
-	}
+			burl := fmt.Sprintf("%s/%s", ts.URL, tv.fname)
+			parsedUrl, _ := url.Parse(burl)
+			err = DownloadToolHttp(dir, burl, parsedUrl, tv.hash)
+			if err != nil {
+				if tv.hashFail && err.Error() == "hashes do not match" {
+					return
+				}
 
-	content, err := os.ReadFile(expectedPath)
-	if err != nil {
-		t.Fatalf("Failed to read downloaded file: %v", err)
-	}
+				t.Fatalf("Expected no error, got: %v", err)
+			}
 
-	if string(content) != testContent {
-		t.Fatalf("Expected content %q, got %q", testContent, string(content))
+			expectedPath := filepath.Join(dir, tv.fname)
+
+			if _, err := os.Stat(expectedPath); os.IsNotExist(err) {
+				t.Fatalf("Expected file to be created at %s", expectedPath)
+			}
+
+			content, err := os.ReadFile(expectedPath)
+			if err != nil {
+				t.Fatalf("Failed to read downloaded file: %v", err)
+			}
+
+			if string(content) != tv.content {
+				t.Fatalf("Expected content %q, got %q", tv.content, string(content))
+			}
+		})
 	}
 }
 

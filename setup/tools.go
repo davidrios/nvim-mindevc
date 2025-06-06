@@ -51,16 +51,19 @@ func DownloadToolHttp(cacheDir string, rawUrl string, parsedUrl *url.URL, expect
 		return fmt.Errorf("got empty file")
 	}
 
-	if f, err := os.Open(tmpName); err != nil {
-		h := sha256.New()
-		if _, err := io.Copy(h, f); err != nil {
-			return err
-		}
+	f, err := os.Open(tmpName)
+	if err != nil {
+		return err
+	}
 
-		gotHash := fmt.Sprintf("%x", h.Sum(nil))
-		if gotHash != expectedHash {
-			return fmt.Errorf("hashes do not match")
-		}
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return err
+	}
+
+	gotHash := fmt.Sprintf("%x", h.Sum(nil))
+	if gotHash != expectedHash {
+		return fmt.Errorf("hashes do not match")
 	}
 
 	err = os.Rename(tmpName, filepath.Join(cacheDir, fname))
