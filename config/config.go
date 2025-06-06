@@ -23,11 +23,42 @@ type Devcontainer struct {
 	FilePath string
 }
 
+type ConfigToolSource string
+
+const (
+	ToolSourceArchive ConfigToolSource = "archive"
+	ToolSourceGitRepo ConfigToolSource = "git-repo"
+)
+
+type ConfigToolArch string
+
+const (
+	ToolArch_x86_64  ConfigToolArch = "x86_64"
+	ToolArch_aarch64 ConfigToolArch = "aarch64"
+)
+
+type ConfigToolArchive struct {
+	U string
+	H string
+}
+
+type ConfigTool struct {
+	Symlinks map[string]string
+	Source   ConfigToolSource
+	Archives map[ConfigToolArch]ConfigToolArchive
+}
+
+type ConfigTools map[string]ConfigTool
+
 type Config struct {
 	Neovim struct {
 		ConfigURI string `mapstructure:"config_uri"`
 	}
-	DevcontainerFile string `mapstructure:"devcontainer_file"`
+	InstallTools     []string `mapstructure:"install_tools"`
+	UsrLocal         string   `mapstructure:"usr_local"`
+	DevcontainerFile string   `mapstructure:"devcontainer_file"`
+	Tools            ConfigTools
+	CacheDir         string `mapstructure:"cache_dir"`
 
 	FilePath string `mapstructure:"-"`
 }
@@ -55,7 +86,60 @@ func LoadConfig(loadConfigFile string) (ConfigViper, error) {
 	var configConfig Config
 	var configViperViper = viper.New()
 
+	configViperViper.SetDefault("tools", ConfigTools{
+		"fd": {
+			Source: ToolSourceArchive,
+			Archives: map[ConfigToolArch]ConfigToolArchive{
+				ToolArch_x86_64: {
+					U: "https://github.com/sharkdp/fd/releases/download/v10.2.0/fd-v10.2.0-x86_64-unknown-linux-musl.tar.gz",
+					H: "d9bfa25ec28624545c222992e1b00673b7c9ca5eb15393c40369f10b28f9c932",
+				},
+				ToolArch_aarch64: {
+					U: "https://github.com/sharkdp/fd/releases/download/v10.2.0/fd-v10.2.0-aarch64-unknown-linux-musl.tar.gz",
+					H: "4e8e596646d047d904f2c5ca74b39dccc69978b6e1fb101094e534b0b59c1bb0",
+				},
+			},
+			Symlinks: map[string]string{
+				"/usr/local/bin/fd": "fd",
+			},
+		},
+		"ripgrep": {
+			Source: ToolSourceArchive,
+			Archives: map[ConfigToolArch]ConfigToolArchive{
+				ToolArch_x86_64: {
+					U: "https://github.com/BurntSushi/ripgrep/releases/download/14.1.1/ripgrep-14.1.1-x86_64-unknown-linux-musl.tar.gz",
+					H: "4cf9f2741e6c465ffdb7c26f38056a59e2a2544b51f7cc128ef28337eeae4d8e",
+				},
+				ToolArch_aarch64: {
+					U: "https://github.com/BurntSushi/ripgrep/releases/download/14.1.1/ripgrep-14.1.1-armv7-unknown-linux-musleabi.tar.gz",
+					H: "e6512cb9d3d53050022b9236edd2eff4244cea343a451bfb3c008af23d0000e5",
+				},
+			},
+			Symlinks: map[string]string{
+				"/usr/local/bin/rg": "rg",
+			},
+		},
+		"gosu": {
+			Source: ToolSourceArchive,
+			Archives: map[ConfigToolArch]ConfigToolArchive{
+				ToolArch_x86_64: {
+					U: "https://github.com/tianon/gosu/releases/download/1.17/gosu-amd64",
+					H: "bbc4136d03ab138b1ad66fa4fc051bafc6cc7ffae632b069a53657279a450de3",
+				},
+				ToolArch_aarch64: {
+					U: "https://github.com/tianon/gosu/releases/download/1.17/gosu-arm64",
+					H: "c3805a85d17f4454c23d7059bcb97e1ec1af272b90126e79ed002342de08389b",
+				},
+			},
+			Symlinks: map[string]string{
+				"/usr/local/bin/gosu": "$bin",
+			},
+		},
+	})
+	configViperViper.SetDefault("install_tools", []string{"fd", "ripgrep", "gosu"})
 	configViperViper.SetDefault("neovim.config_uri", "file://~/.config/nvim")
+	configViperViper.SetDefault("usr_local", "/opt/nvim-mindevc")
+	configViperViper.SetDefault("cache_dir", "~/.cache/nvim-mindevc")
 
 	if loadConfigFile != "" {
 		configViperViper.SetConfigFile(loadConfigFile)
@@ -137,4 +221,16 @@ func LoadDevcontainer(loadDevcontainerFile string) (Devcontainer, error) {
 	}
 
 	return devcontainer, nil
+}
+
+func ExpandHome(pathstr string) (string, error) {
+	if pathstr[:2] == "~/" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", err
+		}
+		pathstr = filepath.Join(home, pathstr[2:])
+	}
+
+	return pathstr, nil
 }

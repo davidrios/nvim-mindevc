@@ -3,17 +3,13 @@ package setup
 import (
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"github.com/davidrios/nvim-mindevc/config"
 	"github.com/davidrios/nvim-mindevc/docker"
 )
 
-func Setup(config config.ConfigViper, devcontainer config.Devcontainer) error {
-	url, err := config.Config.GetConfigURI()
-	if err != nil {
-		return err
-	}
-
+func Setup(myConfig config.ConfigViper, devcontainer config.Devcontainer) error {
 	if devcontainer.Spec.DockerComposeFile == "" {
 		return fmt.Errorf("dockerComposeFile property from devcontainer file must not be empty")
 	}
@@ -22,8 +18,7 @@ func Setup(config config.ConfigViper, devcontainer config.Devcontainer) error {
 		return fmt.Errorf("service property from devcontainer file must not be empty")
 	}
 
-	var composeFile docker.ComposeFile
-	composeFile, err = docker.LoadComposeFile(devcontainer)
+	composeFile, err := docker.LoadComposeFile(devcontainer)
 	if err != nil {
 		return fmt.Errorf("error loading compose file: %w", err)
 	}
@@ -34,31 +29,27 @@ func Setup(config config.ConfigViper, devcontainer config.Devcontainer) error {
 		return fmt.Errorf("compose file does not contain service '%s'", serviceName)
 	}
 
-	if output, err := composeFile.Exec(serviceName, docker.ExecParams{
-		Args: []string{
-			"bash", "-c",
-			`echo aaa
-echo bbb && cat <<EOF
-hello
-EOF`}}); err == nil {
-		slog.Debug("exec", "o", output)
+	arch, err := composeFile.Exec(serviceName, docker.ExecParams{
+		Args: []string{"uname", "-m"},
+		User: "root",
+	})
+	if err != nil {
+		return err
 	}
 
-	if output, err := composeFile.Exec(serviceName, docker.ExecParams{Args: []string{"id", "-u"}, User: "root:root"}); err == nil {
-		slog.Debug("exec", "o", output)
+	arch = strings.TrimSpace(arch)
+	slog.Debug("container arch", "v", arch)
+
+	if err := DownloadTools(myConfig.Config, config.ConfigToolArch(arch)); err != nil {
+		return err
 	}
 
-	// servicePs, err := composeFile.Ps(serviceName)
-	// if err != nil {
-	// 	return err
-	// }
-	//
-	// slog.Debug("servicePs", "v", servicePs)
-	//
-	// if servicePs.State != "running" {
-	// 	return fmt.Errorf("container is not running")
-	// }
+	url, err := myConfig.Config.GetConfigURI()
+	if err != nil {
+		return err
+	}
 
 	slog.Debug("got URL", "url", url, "scheme", url.Scheme)
+
 	return nil
 }
