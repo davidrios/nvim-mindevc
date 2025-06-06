@@ -9,14 +9,34 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/davidrios/nvim-mindevc/config"
 )
 
-const CD_ATTACHMENT = "attachment; filename="
-
 func DownloadToolHttp(cacheDir string, rawUrl string, parsedUrl *url.URL, expectedHash string) (string, error) {
+	cachedFilename := filepath.Join(cacheDir, expectedHash)
+
+	if _, err := os.Stat(cachedFilename); err == nil {
+		f, err := os.Open(cachedFilename)
+		if err != nil {
+			return "", err
+		}
+		defer f.Close()
+
+		h := sha256.New()
+		if _, err := io.Copy(h, f); err != nil {
+			return "", err
+		}
+
+		gotHash := fmt.Sprintf("%x", h.Sum(nil))
+		if gotHash == expectedHash {
+			slog.Debug("using cached file", "hash", expectedHash)
+			return cachedFilename, nil
+		}
+
+		os.Remove(cachedFilename)
+	}
+
 	resp, err := http.Get(rawUrl)
 	if err != nil {
 		return "", err
@@ -27,15 +47,7 @@ func DownloadToolHttp(cacheDir string, rawUrl string, parsedUrl *url.URL, expect
 		return "", fmt.Errorf("bad status: %s", resp.Status)
 	}
 
-	pathParts := strings.Split(parsedUrl.Path, "/")
-	fname := pathParts[len(pathParts)-1]
-	if cd, ok := resp.Header["Content-Disposition"]; ok {
-		if len(cd) > 0 && cd[0][:len(CD_ATTACHMENT)] == CD_ATTACHMENT {
-			fname = strings.Trim(cd[0][len(CD_ATTACHMENT):], "\"")
-		}
-	}
-
-	tmpName := filepath.Join(cacheDir, fname+".tmp")
+	tmpName := filepath.Join(cacheDir, expectedHash+".tmp")
 
 	out, err := os.Create(tmpName)
 	if err != nil {
@@ -55,6 +67,7 @@ func DownloadToolHttp(cacheDir string, rawUrl string, parsedUrl *url.URL, expect
 	if err != nil {
 		return "", err
 	}
+	defer f.Close()
 
 	h := sha256.New()
 	if _, err := io.Copy(h, f); err != nil {
@@ -66,13 +79,12 @@ func DownloadToolHttp(cacheDir string, rawUrl string, parsedUrl *url.URL, expect
 		return "", fmt.Errorf("hashes do not match")
 	}
 
-	fullFname := filepath.Join(cacheDir, fname)
-	err = os.Rename(tmpName, fullFname)
+	err = os.Rename(tmpName, cachedFilename)
 	if err != nil {
 		return "", err
 	}
 
-	return fullFname, nil
+	return cachedFilename, nil
 }
 
 func ExtractAndLinkTool(tool config.ConfigTool, fname string) error {

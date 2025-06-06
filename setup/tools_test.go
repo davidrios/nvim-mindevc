@@ -57,7 +57,7 @@ func TestDownloadToolHttp_Success(t *testing.T) {
 				t.Fatalf("Expected no error, got: %v", err)
 			}
 
-			expectedPath := filepath.Join(dir, tv.fname)
+			expectedPath := filepath.Join(dir, tv.hash)
 
 			if _, err := os.Stat(expectedPath); os.IsNotExist(err) {
 				t.Fatalf("Expected file to be created at %s", expectedPath)
@@ -164,5 +164,66 @@ func TestDownloadToolHttp_EmptyResponse(t *testing.T) {
 	_, err = DownloadToolHttp(dir, ts.URL, parsedUrl, "")
 	if err == nil {
 		t.Fatalf("Expected error for empty response")
+	}
+}
+
+func TestDownloadToolHttp_CachingBehavior(t *testing.T) {
+	dir, err := os.MkdirTemp("", "gotest")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
+
+	testContent := "test content for caching"
+	expectedHash := "47f30c7ebec2e17fd2ff5bb93dcfc189773e5d90fd1dbf8f9dbed877973174e3"
+	requestCount := 0
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestCount++
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(testContent))
+	}))
+	defer ts.Close()
+
+	parsedUrl, _ := url.Parse(ts.URL)
+
+	// First download
+	fname1, err := DownloadToolHttp(dir, ts.URL, parsedUrl, expectedHash)
+	if err != nil {
+		t.Fatalf("First download failed: %v", err)
+	}
+
+	if requestCount != 1 {
+		t.Fatalf("Expected 1 HTTP request, got %d", requestCount)
+	}
+
+	// Verify file exists with hash name
+	expectedPath := filepath.Join(dir, expectedHash)
+	if fname1 != expectedPath {
+		t.Fatalf("Expected filename %s, got %s", expectedPath, fname1)
+	}
+
+	// Second download should use cache
+	fname2, err := DownloadToolHttp(dir, ts.URL, parsedUrl, expectedHash)
+	if err != nil {
+		t.Fatalf("Second download failed: %v", err)
+	}
+
+	if requestCount != 1 {
+		t.Fatalf("Expected 1 HTTP request (cached), got %d", requestCount)
+	}
+
+	if fname1 != fname2 {
+		t.Fatalf("Expected same filename for cached file, got %s vs %s", fname1, fname2)
+	}
+
+	// Verify content is correct
+	content, err := os.ReadFile(fname2)
+	if err != nil {
+		t.Fatalf("Failed to read cached file: %v", err)
+	}
+
+	if string(content) != testContent {
+		t.Fatalf("Expected content %q, got %q", testContent, string(content))
 	}
 }
