@@ -16,15 +16,15 @@ import (
 
 const CD_ATTACHMENT = "attachment; filename="
 
-func DownloadToolHttp(cacheDir string, rawUrl string, parsedUrl *url.URL, expectedHash string) error {
+func DownloadToolHttp(cacheDir string, rawUrl string, parsedUrl *url.URL, expectedHash string) (string, error) {
 	resp, err := http.Get(rawUrl)
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("bad status: %s", resp.Status)
+		return "", fmt.Errorf("bad status: %s", resp.Status)
 	}
 
 	pathParts := strings.Split(parsedUrl.Path, "/")
@@ -39,38 +39,43 @@ func DownloadToolHttp(cacheDir string, rawUrl string, parsedUrl *url.URL, expect
 
 	out, err := os.Create(tmpName)
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer out.Close()
 
 	read, err := io.Copy(out, resp.Body)
 	if err != nil {
-		return err
+		return "", err
 	}
 	if read == 0 {
-		return fmt.Errorf("got empty file")
+		return "", fmt.Errorf("got empty file")
 	}
 
 	f, err := os.Open(tmpName)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	h := sha256.New()
 	if _, err := io.Copy(h, f); err != nil {
-		return err
+		return "", err
 	}
 
 	gotHash := fmt.Sprintf("%x", h.Sum(nil))
 	if gotHash != expectedHash {
-		return fmt.Errorf("hashes do not match")
+		return "", fmt.Errorf("hashes do not match")
 	}
 
-	err = os.Rename(tmpName, filepath.Join(cacheDir, fname))
+	fullFname := filepath.Join(cacheDir, fname)
+	err = os.Rename(tmpName, fullFname)
 	if err != nil {
-		return err
+		return "", err
 	}
 
+	return fullFname, nil
+}
+
+func ExtractAndLinkTool(tool config.ConfigTool, fname string) error {
 	return nil
 }
 
@@ -109,7 +114,11 @@ func DownloadTools(myConfig config.Config, arch config.ConfigToolArch) error {
 
 			switch parsedUrl.Scheme {
 			case "https", "http":
-				err = DownloadToolHttp(cacheDir, archive.U, parsedUrl, archive.H)
+				fname, err := DownloadToolHttp(cacheDir, archive.U, parsedUrl, archive.H)
+				if err != nil {
+					return err
+				}
+				err = ExtractAndLinkTool(tool, fname)
 				if err != nil {
 					return err
 				}

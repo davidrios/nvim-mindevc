@@ -48,7 +48,7 @@ func TestDownloadToolHttp_Success(t *testing.T) {
 
 			burl := fmt.Sprintf("%s/%s", ts.URL, tv.fname)
 			parsedUrl, _ := url.Parse(burl)
-			err = DownloadToolHttp(dir, burl, parsedUrl, tv.hash)
+			_, err = DownloadToolHttp(dir, burl, parsedUrl, tv.hash)
 			if err != nil {
 				if tv.hashFail && err.Error() == "hashes do not match" {
 					return
@@ -84,7 +84,7 @@ func TestDownloadToolHttp_InvalidURL(t *testing.T) {
 
 	burl := "invalid-url"
 	parsedUrl, _ := url.Parse(burl)
-	err = DownloadToolHttp(dir, burl, parsedUrl, "somehash")
+	_, err = DownloadToolHttp(dir, burl, parsedUrl, "somehash")
 	if err == nil {
 		t.Fatal("Expected error for invalid URL, got nil")
 	}
@@ -103,7 +103,7 @@ func TestDownloadToolHttp_HTTPError(t *testing.T) {
 	defer ts.Close()
 
 	parsedUrl, _ := url.Parse(ts.URL)
-	err = DownloadToolHttp(dir, ts.URL, parsedUrl, "somehash")
+	_, err = DownloadToolHttp(dir, ts.URL, parsedUrl, "somehash")
 	if err == nil {
 		t.Fatal("Expected error for 404 response, got nil")
 	}
@@ -126,7 +126,7 @@ func TestDownloadToolHttp_HashMismatch(t *testing.T) {
 	defer ts.Close()
 
 	parsedUrl, _ := url.Parse(ts.URL)
-	err = DownloadToolHttp(dir, ts.URL, parsedUrl, wrongHash)
+	_, err = DownloadToolHttp(dir, ts.URL, parsedUrl, wrongHash)
 	if err == nil {
 		t.Fatal("Expected error for hash mismatch, got nil")
 	}
@@ -142,7 +142,7 @@ func TestDownloadToolHttp_InvalidCacheDir(t *testing.T) {
 	defer ts.Close()
 
 	parsedUrl, _ := url.Parse(ts.URL)
-	err := DownloadToolHttp(invalidDir, ts.URL, parsedUrl, "somehash")
+	_, err := DownloadToolHttp(invalidDir, ts.URL, parsedUrl, "somehash")
 	if err == nil {
 		t.Fatal("Expected error for invalid cache directory, got nil")
 	}
@@ -161,7 +161,7 @@ func TestDownloadToolHttp_EmptyResponse(t *testing.T) {
 	defer ts.Close()
 
 	parsedUrl, _ := url.Parse(ts.URL)
-	err = DownloadToolHttp(dir, ts.URL, parsedUrl, "")
+	_, err = DownloadToolHttp(dir, ts.URL, parsedUrl, "")
 	if err == nil {
 		t.Fatalf("Expected error for empty response")
 	}
