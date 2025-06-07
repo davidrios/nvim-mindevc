@@ -47,6 +47,24 @@ const (
 	ArchiveTypeBin    ConfigToolArchiveType = "bin"
 )
 
+var ValidArchiveTypes map[string]struct{} = map[string]struct{}{
+	string(ArchiveTypeBin):    {},
+	string(ArchiveTypeZip):    {},
+	string(ArchiveTypeTarGz):  {},
+	string(ArchiveTypeTarBz2): {},
+	string(ArchiveTypeTarXz):  {},
+}
+
+func (archiveType *ConfigToolArchiveType) IsValid() bool {
+	_, ok := ValidArchiveTypes[string(*archiveType)]
+	return ok
+}
+
+func (archiveType *ConfigToolArchiveType) IsTar() bool {
+	archiveTypeVal := *archiveType
+	return archiveTypeVal == ArchiveTypeTarGz || archiveTypeVal == ArchiveTypeTarBz2 || archiveTypeVal == ArchiveTypeTarXz
+}
+
 type ConfigToolArchive struct {
 	U string
 	H string

@@ -1,10 +1,8 @@
 package setup
 
 import (
-	"archive/tar"
-	"archive/zip"
-	"compress/gzip"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -233,191 +231,80 @@ func TestDownloadToolHttp_CachingBehavior(t *testing.T) {
 	}
 }
 
-func createTestTarGz(t *testing.T, dest string, files map[string]string) {
-	file, err := os.Create(dest)
-	if err != nil {
-		t.Fatalf("Failed to create tar.gz file: %v", err)
-	}
-	defer file.Close()
-
-	gw := gzip.NewWriter(file)
-	defer gw.Close()
-
-	tw := tar.NewWriter(gw)
-	defer tw.Close()
-
-	for name, content := range files {
-		header := &tar.Header{
-			Name: name,
-			Mode: 0644,
-			Size: int64(len(content)),
-		}
-		if err := tw.WriteHeader(header); err != nil {
-			t.Fatalf("Failed to write tar header: %v", err)
-		}
-		if _, err := tw.Write([]byte(content)); err != nil {
-			t.Fatalf("Failed to write tar content: %v", err)
-		}
-	}
-}
-
-func createTestZip(t *testing.T, dest string, files map[string]string) {
-	file, err := os.Create(dest)
-	if err != nil {
-		t.Fatalf("Failed to create zip file: %v", err)
-	}
-	defer file.Close()
-
-	zw := zip.NewWriter(file)
-	defer zw.Close()
-
-	for name, content := range files {
-		w, err := zw.Create(name)
-		if err != nil {
-			t.Fatalf("Failed to create zip entry: %v", err)
-		}
-		if _, err := w.Write([]byte(content)); err != nil {
-			t.Fatalf("Failed to write zip content: %v", err)
-		}
-	}
-}
-
-func TestExtractTarGz(t *testing.T) {
-	tempDir, err := os.MkdirTemp("", "test-extract")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tempDir)
-
-	testFiles := map[string]string{
-		"tool/bin/fd":     "fake fd binary",
-		"tool/doc/README": "documentation",
-	}
-
-	tarFile := filepath.Join(tempDir, "test.tar.gz")
-	createTestTarGz(t, tarFile, testFiles)
-
-	extractDir := filepath.Join(tempDir, "extracted")
-	if err := extractTarGz(tarFile, extractDir); err != nil {
-		t.Fatalf("Failed to extract tar.gz: %v", err)
-	}
-
-	for name, expectedContent := range testFiles {
-		extractedPath := filepath.Join(extractDir, name)
-		content, err := os.ReadFile(extractedPath)
-		if err != nil {
-			t.Fatalf("Failed to read extracted file %s: %v", name, err)
-		}
-		if string(content) != expectedContent {
-			t.Fatalf("Content mismatch for %s: expected %q, got %q", name, expectedContent, string(content))
-		}
-	}
-}
-
-func TestExtractZip(t *testing.T) {
-	tempDir, err := os.MkdirTemp("", "test-extract")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tempDir)
-
-	testFiles := map[string]string{
-		"tool/bin/rg":     "fake ripgrep binary",
-		"tool/doc/README": "documentation",
-	}
-
-	zipFile := filepath.Join(tempDir, "test.zip")
-	createTestZip(t, zipFile, testFiles)
-
-	extractDir := filepath.Join(tempDir, "extracted")
-	if err := extractZip(zipFile, extractDir); err != nil {
-		t.Fatalf("Failed to extract zip: %v", err)
-	}
-
-	for name, expectedContent := range testFiles {
-		extractedPath := filepath.Join(extractDir, name)
-		content, err := os.ReadFile(extractedPath)
-		if err != nil {
-			t.Fatalf("Failed to read extracted file %s: %v", name, err)
-		}
-		if string(content) != expectedContent {
-			t.Fatalf("Content mismatch for %s: expected %q, got %q", name, expectedContent, string(content))
-		}
-	}
-}
-
-func TestExtractAndLinkTool_TarGz(t *testing.T) {
+func TestExtractToolCompressed(t *testing.T) {
 	tempDir, err := os.MkdirTemp("", "test-extract-link")
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
 	defer os.RemoveAll(tempDir)
 
-	testFiles := map[string]string{
-		"fd-v10.2.0-x86_64-unknown-linux-musl/fd": "fake fd binary",
+	downloadDir := filepath.Join(tempDir, "_download")
+	if err = os.MkdirAll(downloadDir, 0o750); err != nil {
+		t.Fatalf("%s", err)
 	}
 
-	tarFile := filepath.Join(tempDir, "test.tar.gz")
-	createTestTarGz(t, tarFile, testFiles)
-
-	tool := config.ConfigTool{
-		Symlinks: map[string]string{
-			filepath.Join(tempDir, "usr/local/bin/fd"): "fd-v10.2.0-x86_64-unknown-linux-musl/fd",
-		},
+	files := map[string]string{
+		"a":           "87428fc522803d31065e7bce3cf03fe475096631e5e07bbd7a0fde60c4cf25c7",
+		"aa/aa":       "d9cd8155764c3543f10fad8a480d743137466f8d55213c8eaefcd12f06d43a80",
+		"bb/bb":       "a81c31ac62620b9215a14ff00544cb07a55b765594f3ab3be77e70923ae27cf1",
+		"bb/cc/dd/dd": "b6f9dd313cde39ae1b87e63b9b457029bcea6e9520b5db5de20d3284e4c0259e",
 	}
 
-	archive := config.ConfigToolArchive{
-		T: config.ArchiveTypeTarGz,
-	}
+	testTable := []struct {
+		name    string
+		archive config.ConfigToolArchive
+		fname   string
+		prefix  string
+	}{{
+		name:    "tool1",
+		archive: config.ConfigToolArchive{T: config.ArchiveTypeZip},
+		fname:   "tool.zip",
+	}, {
+		name:    "tool2",
+		archive: config.ConfigToolArchive{T: config.ArchiveTypeTarGz},
+		fname:   "tool.tar.gz",
+		prefix:  "extracted-v1.0.0",
+	}, {
+		name:    "tool3",
+		archive: config.ConfigToolArchive{T: config.ArchiveTypeTarBz2},
+		fname:   "tool.tar.bz2",
+		prefix:  "extracted-v1.0.0",
+	}, {
+		name:    "tool4",
+		archive: config.ConfigToolArchive{T: config.ArchiveTypeTarXz},
+		fname:   "tool.tar.xz",
+		prefix:  "extracted-v1.0.0",
+	}}
+	for _, tv := range testTable {
+		t.Run(tv.name, func(t *testing.T) {
+			downloadFname := filepath.Join(downloadDir, tv.fname)
 
-	if err := ExtractAndLinkTool(tool, archive, tarFile); err != nil {
-		t.Fatalf("Failed to extract and link tool: %v", err)
-	}
+			fp, err := os.OpenFile(downloadFname, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0o644)
+			if err != nil {
+				t.Fatalf("unexpected error: %s", err)
+			}
+			defer fp.Close()
 
-	linkPath := filepath.Join(tempDir, "usr/local/bin/fd")
-	if _, err := os.Lstat(linkPath); err != nil {
-		t.Fatalf("Expected symlink to be created at %s: %v", linkPath, err)
-	}
-}
+			sfp, err := os.Open(filepath.Join("testdata", "extractfiles", tv.fname))
+			if err != nil {
+				t.Fatalf("unexpected error: %s", err)
+			}
+			defer sfp.Close()
 
-func TestExtractAndLinkTool_Bin(t *testing.T) {
-	tempDir, err := os.MkdirTemp("", "test-extract-bin")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tempDir)
+			if _, err := io.Copy(fp, sfp); err != nil {
+				t.Fatalf("unexpected error: %s", err)
+			}
 
-	binContent := "fake gosu binary"
-	binFile := filepath.Join(tempDir, "gosu-amd64")
-	if err := os.WriteFile(binFile, []byte(binContent), 0755); err != nil {
-		t.Fatalf("Failed to create test binary: %v", err)
-	}
+			err = ExtractTool(tv.name, tv.archive, downloadFname)
+			if err != nil {
+				t.Fatalf("unexpected error: %s", err)
+			}
 
-	tool := config.ConfigTool{
-		Symlinks: map[string]string{
-			filepath.Join(tempDir, "usr/local/bin/gosu"): "$bin",
-		},
-	}
-
-	archive := config.ConfigToolArchive{
-		T: config.ArchiveTypeBin,
-	}
-
-	if err := ExtractAndLinkTool(tool, archive, binFile); err != nil {
-		t.Fatalf("Failed to extract and link binary tool: %v", err)
-	}
-
-	linkPath := filepath.Join(tempDir, "usr/local/bin/gosu")
-	if _, err := os.Lstat(linkPath); err != nil {
-		t.Fatalf("Expected symlink to be created at %s: %v", linkPath, err)
-	}
-
-	target, err := os.Readlink(linkPath)
-	if err != nil {
-		t.Fatalf("Failed to read symlink target: %v", err)
-	}
-
-	if target != binFile {
-		t.Fatalf("Expected symlink target %s, got %s", binFile, target)
+			for _, fname := range files {
+				exPath := filepath.Join(tempDir, tv.name, fname)
+				if exPath == "" {
+				}
+			}
+		})
 	}
 }

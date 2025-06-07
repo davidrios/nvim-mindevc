@@ -13,14 +13,13 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/davidrios/nvim-mindevc/config"
 	"github.com/ulikunitz/xz"
 )
 
-func DownloadToolHttp(cacheDir string, rawUrl string, parsedUrl *url.URL, expectedHash string) (string, error) {
-	cachedFilename := filepath.Join(cacheDir, expectedHash)
+func DownloadToolHttp(downloadDir string, rawUrl string, parsedUrl *url.URL, expectedHash string) (string, error) {
+	cachedFilename := filepath.Join(downloadDir, expectedHash)
 
 	if _, err := os.Stat(cachedFilename); err == nil {
 		f, err := os.Open(cachedFilename)
@@ -53,7 +52,7 @@ func DownloadToolHttp(cacheDir string, rawUrl string, parsedUrl *url.URL, expect
 		return "", fmt.Errorf("bad status: %s", resp.Status)
 	}
 
-	tmpName := filepath.Join(cacheDir, expectedHash+".tmp")
+	tmpName := filepath.Join(downloadDir, expectedHash+".tmp")
 
 	out, err := os.Create(tmpName)
 	if err != nil {
@@ -93,18 +92,6 @@ func DownloadToolHttp(cacheDir string, rawUrl string, parsedUrl *url.URL, expect
 	return cachedFilename, nil
 }
 
-func ungz(r io.Reader) (io.Reader, error) {
-	return gzip.NewReader(r)
-}
-
-func unxz(r io.Reader) (io.Reader, error) {
-	return xz.NewReader(r)
-}
-
-func unbz2(r io.Reader) io.Reader {
-	return bzip2.NewReader(r)
-}
-
 func extractTar(r io.Reader, dest string) error {
 	tr := tar.NewReader(r)
 	for {
@@ -128,65 +115,54 @@ func extractTar(r io.Reader, dest string) error {
 				return err
 			}
 
-			f, err := os.OpenFile(target, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
+			f, err := os.OpenFile(target, os.O_CREATE|os.O_RDWR|os.O_TRUNC, os.FileMode(header.Mode))
 			if err != nil {
 				return err
 			}
+			defer f.Close()
 
 			if _, err := io.Copy(f, tr); err != nil {
-				f.Close()
 				return err
 			}
-			f.Close()
 		}
 	}
 
 	return nil
 }
 
-func extractTarGz(src, dest string) error {
-	file, err := os.Open(src)
+func extractZipFile(f *zip.File, destDir string) error {
+	rc, err := f.Open()
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer rc.Close()
 
-	gzr, err := ungz(file)
+	dest := filepath.Join(destDir, f.Name)
+
+	if f.FileInfo().IsDir() {
+		os.MkdirAll(dest, f.FileInfo().Mode())
+		return nil
+	}
+
+	if err := os.MkdirAll(filepath.Dir(dest), 0755); err != nil {
+		return err
+	}
+
+	outFile, err := os.OpenFile(dest, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.FileInfo().Mode())
 	if err != nil {
 		return err
 	}
-	defer gzr.(io.Closer).Close()
+	defer outFile.Close()
 
-	return extractTar(gzr, dest)
+	_, err = io.Copy(outFile, rc)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func extractTarXz(src, dest string) error {
-	file, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	xzr, err := unxz(file)
-	if err != nil {
-		return err
-	}
-
-	return extractTar(xzr, dest)
-}
-
-func extractTarBz2(src, dest string) error {
-	file, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	bzr := unbz2(file)
-	return extractTar(bzr, dest)
-}
-
-func extractZip(src, dest string) error {
+func extractZip(src, destDir string) error {
 	r, err := zip.OpenReader(src)
 	if err != nil {
 		return err
@@ -194,35 +170,7 @@ func extractZip(src, dest string) error {
 	defer r.Close()
 
 	for _, f := range r.File {
-		rc, err := f.Open()
-		if err != nil {
-			return err
-		}
-
-		path := filepath.Join(dest, f.Name)
-
-		if f.FileInfo().IsDir() {
-			os.MkdirAll(path, f.FileInfo().Mode())
-			rc.Close()
-			continue
-		}
-
-		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
-			rc.Close()
-			return err
-		}
-
-		outFile, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.FileInfo().Mode())
-		if err != nil {
-			rc.Close()
-			return err
-		}
-
-		_, err = io.Copy(outFile, rc)
-		outFile.Close()
-		rc.Close()
-
-		if err != nil {
+		if err = extractZipFile(f, destDir); err != nil {
 			return err
 		}
 	}
@@ -230,33 +178,10 @@ func extractZip(src, dest string) error {
 	return nil
 }
 
-func handleBin(src, dest, binName string) error {
-	target := filepath.Join(dest, binName)
-	
-	if err := os.MkdirAll(filepath.Dir(target), 0755); err != nil {
-		return err
-	}
-
-	srcFile, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer srcFile.Close()
-
-	destFile, err := os.OpenFile(target, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0755)
-	if err != nil {
-		return err
-	}
-	defer destFile.Close()
-
-	_, err = io.Copy(destFile, srcFile)
-	return err
-}
-
 func createSymlinks(extractDir string, symlinks map[string]string) error {
 	for linkPath, target := range symlinks {
 		var finalTarget string
-		
+
 		if target == "$bin" {
 			finalTarget = extractDir
 		} else {
@@ -283,44 +208,68 @@ func createSymlinks(extractDir string, symlinks map[string]string) error {
 	return nil
 }
 
-func ExtractAndLinkTool(tool config.ConfigTool, archive config.ConfigToolArchive, fname string) error {
-	var extractDir string
-	
-	switch archive.T {
-	case config.ArchiveTypeTarGz, config.ArchiveTypeTarXz, config.ArchiveTypeTarBz2, config.ArchiveTypeZip:
-		extractDir = strings.TrimSuffix(fname, filepath.Ext(fname))
-		if err := os.MkdirAll(extractDir, 0755); err != nil {
-			return fmt.Errorf("failed to create extraction directory: %w", err)
-		}
-		
-		switch archive.T {
-		case config.ArchiveTypeTarGz:
-			if err := extractTarGz(fname, extractDir); err != nil {
-				return fmt.Errorf("failed to extract tar.gz: %w", err)
-			}
-		case config.ArchiveTypeTarXz:
-			if err := extractTarXz(fname, extractDir); err != nil {
-				return fmt.Errorf("failed to extract tar.xz: %w", err)
-			}
-		case config.ArchiveTypeTarBz2:
-			if err := extractTarBz2(fname, extractDir); err != nil {
-				return fmt.Errorf("failed to extract tar.bz2: %w", err)
-			}
-		case config.ArchiveTypeZip:
-			if err := extractZip(fname, extractDir); err != nil {
-				return fmt.Errorf("failed to extract zip: %w", err)
-			}
-		}
-		
-	case config.ArchiveTypeBin:
-		extractDir = fname
-		
-	default:
-		return fmt.Errorf("unsupported archive type: %s", archive.T)
+func ExtractTool(
+	toolName string,
+	archive config.ConfigToolArchive,
+	fname string,
+) error {
+	if !archive.T.IsValid() {
+		return fmt.Errorf("unknown archive type")
 	}
 
-	if err := createSymlinks(extractDir, tool.Symlinks); err != nil {
-		return fmt.Errorf("failed to create symlinks: %w", err)
+	toolDestDir := filepath.Join(filepath.Dir(fname), "..", toolName)
+	if err := os.MkdirAll(toolDestDir, 0755); err != nil {
+		return fmt.Errorf("failed to create extraction directory: %w", err)
+	}
+
+	if archive.T == config.ArchiveTypeZip {
+		err := extractZip(fname, toolDestDir)
+		if err != nil {
+			return fmt.Errorf("could not extract zip: %w", err)
+		}
+	} else {
+		toolFile, err := os.Open(fname)
+		if err != nil {
+			return fmt.Errorf("could not open downloaded file: %w", err)
+		}
+		defer toolFile.Close()
+
+		if archive.T == config.ArchiveTypeBin {
+			destFile, err := os.OpenFile(
+				filepath.Join(toolDestDir, toolName),
+				os.O_CREATE|os.O_RDWR|os.O_TRUNC,
+				os.FileMode(0o755))
+			if err != nil {
+				return fmt.Errorf("error writing tool file: %w", err)
+			}
+			defer destFile.Close()
+
+			if _, err := io.Copy(destFile, toolFile); err != nil {
+				return fmt.Errorf("error writing tool file: %w", err)
+			}
+		} else {
+			var toolFileReader io.Reader = toolFile
+
+			switch archive.T {
+			case config.ArchiveTypeTarGz:
+				toolFileReader, err = gzip.NewReader(toolFile)
+			case config.ArchiveTypeTarBz2:
+				toolFileReader = bzip2.NewReader(toolFile)
+			case config.ArchiveTypeTarXz:
+				toolFileReader, err = xz.NewReader(toolFile)
+			}
+
+			if err != nil {
+				return fmt.Errorf("error extracting: %w", err)
+			}
+
+			if archive.T.IsTar() {
+				err = extractTar(toolFileReader, toolDestDir)
+				if err != nil {
+					return fmt.Errorf("failed to extract tar: %w", err)
+				}
+			}
+		}
 	}
 
 	return nil
@@ -334,7 +283,9 @@ func DownloadTools(myConfig config.Config, arch config.ConfigToolArch) error {
 		return err
 	}
 
-	if err := os.MkdirAll(filepath.Join(cacheDir, "tools"), 0o750); err != nil {
+	downloadDir := filepath.Join(cacheDir, "tools", "_download")
+
+	if err := os.MkdirAll(downloadDir, 0o750); err != nil {
 		return fmt.Errorf("error creating cache dir: %w", err)
 	}
 
@@ -361,11 +312,11 @@ func DownloadTools(myConfig config.Config, arch config.ConfigToolArch) error {
 
 			switch parsedUrl.Scheme {
 			case "https", "http":
-				fname, err := DownloadToolHttp(cacheDir, archive.U, parsedUrl, archive.H)
+				fname, err := DownloadToolHttp(downloadDir, archive.U, parsedUrl, archive.H)
 				if err != nil {
 					return err
 				}
-				err = ExtractAndLinkTool(tool, archive, fname)
+				err = ExtractTool(toolName, archive, fname)
 				if err != nil {
 					return err
 				}
