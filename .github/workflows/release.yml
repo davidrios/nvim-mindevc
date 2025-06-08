@@ -1,0 +1,141 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  schedule:
+    # Nightly at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build and Release
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+            suffix: linux-x86_64
+          - goos: linux
+            goarch: arm64
+            suffix: linux-aarch64
+          - goos: darwin
+            goarch: amd64
+            suffix: darwin-x86_64
+          - goos: darwin
+            goarch: arm64
+            suffix: darwin-aarch64
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+
+      - name: Run tests
+        run: go test ./...
+
+      - name: Build binary
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: 0
+        run: go build -ldflags "-s -w" -o nvim-mindevc-${{ matrix.suffix }} .
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: nvim-mindevc-${{ matrix.suffix }}
+          path: nvim-mindevc-${{ matrix.suffix }}
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: always() && needs.build.result == 'success'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+
+      - name: Prepare release assets
+        run: |
+          mkdir -p release-assets
+          for dir in nvim-mindevc-*; do
+            if [ -d "$dir" ]; then
+              cp "$dir"/* release-assets/
+            fi
+          done
+          ls -la release-assets/
+
+      - name: Generate checksums
+        run: |
+          cd release-assets
+          sha256sum * > checksums.txt
+          cat checksums.txt
+
+      - name: Determine release type and tag
+        id: release_info
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            echo "is_tag_release=true" >> $GITHUB_OUTPUT
+            echo "tag_name=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+            echo "release_name=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+            echo "prerelease=false" >> $GITHUB_OUTPUT
+          else
+            echo "is_tag_release=false" >> $GITHUB_OUTPUT
+            echo "tag_name=nightly-$(date +'%Y%m%d')" >> $GITHUB_OUTPUT
+            echo "release_name=Nightly $(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+            echo "prerelease=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Delete existing nightly release
+        if: steps.release_info.outputs.is_tag_release == 'false'
+        run: |
+          gh release delete nightly-$(date +'%Y%m%d') --yes || true
+          git push origin :refs/tags/nightly-$(date +'%Y%m%d') || true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create Release
+        uses: softprops/action-release@v1
+        with:
+          tag_name: ${{ steps.release_info.outputs.tag_name }}
+          name: ${{ steps.release_info.outputs.release_name }}
+          prerelease: ${{ steps.release_info.outputs.prerelease }}
+          files: |
+            release-assets/*
+          body: |
+            ${{ steps.release_info.outputs.is_tag_release == 'true' && 'Release' || 'Nightly build from main branch' }}
+
+            ## Checksums
+            ```
+            $(cat release-assets/checksums.txt)
+            ```
+
+            ## Installation
+
+            Download the appropriate binary for your platform and make it executable:
+
+            ```bash
+            # Linux x86_64
+            wget https://github.com/${{ github.repository }}/releases/download/${{ steps.release_info.outputs.tag_name }}/nvim-mindevc-linux-x86_64
+            chmod +x nvim-mindevc-linux-x86_64
+            sudo mv nvim-mindevc-linux-x86_64 /usr/local/bin/nvim-mindevc
+
+            # Linux aarch64
+            wget https://github.com/${{ github.repository }}/releases/download/${{ steps.release_info.outputs.tag_name }}/nvim-mindevc-linux-aarch64
+            chmod +x nvim-mindevc-linux-aarch64
+            sudo mv nvim-mindevc-linux-aarch64 /usr/local/bin/nvim-mindevc
+            ```
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
