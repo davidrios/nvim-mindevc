@@ -140,7 +140,10 @@ func extractZipFile(f *zip.File, destDir string) error {
 	dest := filepath.Join(destDir, f.Name)
 
 	if f.FileInfo().IsDir() {
-		os.MkdirAll(dest, f.FileInfo().Mode())
+		err = os.MkdirAll(dest, f.FileInfo().Mode())
+		if err != nil {
+			return err
+		}
 		return nil
 	}
 
@@ -178,31 +181,35 @@ func extractZip(src, destDir string) error {
 	return nil
 }
 
-func createSymlinks(extractDir string, symlinks map[string]string) error {
-	for linkPath, target := range symlinks {
+func CreateToolSymlinks(extractedTo string, symlinks map[string]string) error {
+	for link, target := range symlinks {
 		var finalTarget string
 
 		if target == "$bin" {
-			finalTarget = extractDir
+			finalTarget = extractedTo
+			err := os.Chmod(finalTarget, 0o755)
+			if err != nil {
+				return fmt.Errorf("failed to set executable mode: %w", err)
+			}
 		} else {
-			finalTarget = filepath.Join(extractDir, target)
+			finalTarget = filepath.Join(extractedTo, target)
 		}
 
-		if err := os.MkdirAll(filepath.Dir(linkPath), 0755); err != nil {
-			return fmt.Errorf("failed to create directory for symlink %s: %w", linkPath, err)
+		if err := os.MkdirAll(filepath.Dir(link), 0755); err != nil {
+			return fmt.Errorf("failed to create directory for symlink %s: %w", link, err)
 		}
 
-		if _, err := os.Lstat(linkPath); err == nil {
-			if err := os.Remove(linkPath); err != nil {
-				return fmt.Errorf("failed to remove existing symlink %s: %w", linkPath, err)
+		if _, err := os.Lstat(link); err == nil {
+			if err := os.Remove(link); err != nil {
+				return fmt.Errorf("failed to remove existing symlink %s: %w", link, err)
 			}
 		}
 
-		if err := os.Symlink(finalTarget, linkPath); err != nil {
-			return fmt.Errorf("failed to create symlink %s -> %s: %w", linkPath, finalTarget, err)
+		if err := os.Symlink(finalTarget, link); err != nil {
+			return fmt.Errorf("failed to create symlink %s -> %s: %w", link, finalTarget, err)
 		}
 
-		slog.Debug("created symlink", "link", linkPath, "target", finalTarget)
+		slog.Debug("created symlink", "link", link, "target", finalTarget)
 	}
 
 	return nil
@@ -212,25 +219,27 @@ func ExtractTool(
 	toolName string,
 	archive config.ConfigToolArchive,
 	fname string,
-) error {
+) (string, error) {
 	if !archive.T.IsValid() {
-		return fmt.Errorf("unknown archive type")
+		return "", fmt.Errorf("unknown archive type")
 	}
 
 	toolDestDir := filepath.Join(filepath.Dir(fname), "..", toolName)
 	if err := os.MkdirAll(toolDestDir, 0755); err != nil {
-		return fmt.Errorf("failed to create extraction directory: %w", err)
+		return "", fmt.Errorf("failed to create extraction directory: %w", err)
 	}
 
+	var err error
+
 	if archive.T == config.ArchiveTypeZip {
-		err := extractZip(fname, toolDestDir)
+		err = extractZip(fname, toolDestDir)
 		if err != nil {
-			return fmt.Errorf("could not extract zip: %w", err)
+			return "", fmt.Errorf("could not extract zip: %w", err)
 		}
 	} else {
 		toolFile, err := os.Open(fname)
 		if err != nil {
-			return fmt.Errorf("could not open downloaded file: %w", err)
+			return "", fmt.Errorf("could not open downloaded file: %w", err)
 		}
 		defer toolFile.Close()
 
@@ -240,12 +249,12 @@ func ExtractTool(
 				os.O_CREATE|os.O_RDWR|os.O_TRUNC,
 				os.FileMode(0o755))
 			if err != nil {
-				return fmt.Errorf("error writing tool file: %w", err)
+				return "", fmt.Errorf("error writing tool file: %w", err)
 			}
 			defer destFile.Close()
 
 			if _, err := io.Copy(destFile, toolFile); err != nil {
-				return fmt.Errorf("error writing tool file: %w", err)
+				return "", fmt.Errorf("error writing tool file: %w", err)
 			}
 		} else {
 			var toolFileReader io.Reader = toolFile
@@ -260,19 +269,19 @@ func ExtractTool(
 			}
 
 			if err != nil {
-				return fmt.Errorf("error extracting: %w", err)
+				return "", fmt.Errorf("error extracting: %w", err)
 			}
 
 			if archive.T.IsTar() {
 				err = extractTar(toolFileReader, toolDestDir)
 				if err != nil {
-					return fmt.Errorf("failed to extract tar: %w", err)
+					return "", fmt.Errorf("failed to extract tar: %w", err)
 				}
 			}
 		}
 	}
 
-	return nil
+	return toolDestDir, nil
 }
 
 func DownloadTools(myConfig config.Config, arch config.ConfigToolArch) error {
@@ -316,7 +325,13 @@ func DownloadTools(myConfig config.Config, arch config.ConfigToolArch) error {
 				if err != nil {
 					return err
 				}
-				err = ExtractTool(toolName, archive, fname)
+
+				extracted, err := ExtractTool(toolName, archive, fname)
+				if err != nil {
+					return err
+				}
+
+				err = CreateToolSymlinks(extracted, tool.Symlinks)
 				if err != nil {
 					return err
 				}

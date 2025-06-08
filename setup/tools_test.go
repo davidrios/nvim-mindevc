@@ -1,6 +1,7 @@
 package setup
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"io"
 	"net/http"
@@ -231,7 +232,27 @@ func TestDownloadToolHttp_CachingBehavior(t *testing.T) {
 	}
 }
 
-func TestExtractToolCompressed(t *testing.T) {
+func CheckFileHash(t *testing.T, fpath string, hash string) {
+	t.Helper()
+	fp, err := os.Open(fpath)
+	if err != nil {
+		t.Fatalf("error reading file: %s", err)
+	}
+	defer fp.Close()
+
+	h := sha256.New()
+	if _, err := io.Copy(h, fp); err != nil {
+		t.Fatalf("error creating hash for: %s", fpath)
+	}
+
+	gotHash := fmt.Sprintf("%x", h.Sum(nil))
+
+	if gotHash != hash {
+		t.Fatalf("file hash doesn't match")
+	}
+}
+
+func TestExtractAndLinkTool(t *testing.T) {
 	tempDir, err := os.MkdirTemp("", "test-extract-link")
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
@@ -249,6 +270,11 @@ func TestExtractToolCompressed(t *testing.T) {
 		"bb/bb":       "a81c31ac62620b9215a14ff00544cb07a55b765594f3ab3be77e70923ae27cf1",
 		"bb/cc/dd/dd": "b6f9dd313cde39ae1b87e63b9b457029bcea6e9520b5db5de20d3284e4c0259e",
 	}
+	links := map[string]string{
+		"_links/aax": "aa/aa",
+		"_links/ddx": "bb/cc/dd/dd",
+	}
+	binHash := "3f212a63b283e660406da7b022b52be26ea74a893c41ce093b00b2e5b0b36d5c"
 
 	testTable := []struct {
 		name    string
@@ -274,7 +300,12 @@ func TestExtractToolCompressed(t *testing.T) {
 		archive: config.ConfigToolArchive{T: config.ArchiveTypeTarXz},
 		fname:   "tool.tar.xz",
 		prefix:  "extracted-v1.0.0",
-	}}
+	}, {
+		name:    "tool5",
+		archive: config.ConfigToolArchive{T: config.ArchiveTypeBin},
+		fname:   "rg",
+	},
+	}
 	for _, tv := range testTable {
 		t.Run(tv.name, func(t *testing.T) {
 			downloadFname := filepath.Join(downloadDir, tv.fname)
@@ -295,14 +326,50 @@ func TestExtractToolCompressed(t *testing.T) {
 				t.Fatalf("unexpected error: %s", err)
 			}
 
-			err = ExtractTool(tv.name, tv.archive, downloadFname)
+			extracted, err := ExtractTool(tv.name, tv.archive, downloadFname)
 			if err != nil {
 				t.Fatalf("unexpected error: %s", err)
 			}
 
-			for _, fname := range files {
-				exPath := filepath.Join(tempDir, tv.name, fname)
-				if exPath == "" {
+			if tv.archive.T == config.ArchiveTypeBin {
+				CheckFileHash(t, filepath.Join(extracted, tv.prefix, tv.name), binHash)
+			} else {
+				for fname, hash := range files {
+					CheckFileHash(t, filepath.Join(extracted, tv.prefix, fname), hash)
+				}
+			}
+
+			err = os.MkdirAll(filepath.Join(tempDir, "_links"), 0o755)
+			if err != nil {
+				t.Fatalf("error: %s", err)
+			}
+
+			if tv.archive.T == config.ArchiveTypeBin {
+				link := filepath.Join(tempDir, "_links", tv.name)
+				err = CreateToolSymlinks(extracted, map[string]string{link: "$bin"})
+				if err != nil {
+					t.Fatalf("error: %s", err)
+				}
+				_, err := os.Stat(link)
+				if err != nil {
+					t.Fatalf("error: %s", err)
+				}
+			} else {
+				linksWithPrefix := map[string]string{}
+				for link, target := range links {
+					linksWithPrefix[filepath.Join(tempDir, link)] = filepath.Join(tv.prefix, target)
+				}
+
+				err = CreateToolSymlinks(extracted, linksWithPrefix)
+				if err != nil {
+					t.Fatalf("error: %s", err)
+				}
+
+				for link := range linksWithPrefix {
+					_, err := os.Stat(link)
+					if err != nil {
+						t.Fatalf("error: %s", err)
+					}
 				}
 			}
 		})
