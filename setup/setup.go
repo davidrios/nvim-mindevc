@@ -40,7 +40,7 @@ func Setup(myConfig config.ConfigViper, devcontainer config.Devcontainer) error 
 	arch = strings.TrimSpace(arch)
 	slog.Debug("container arch", "v", arch)
 
-	if err := DownloadTools(myConfig.Config, config.ConfigToolArch(arch)); err != nil {
+	if _, err := DownloadTools(myConfig.Config, config.ConfigToolArch(arch)); err != nil {
 		return err
 	}
 

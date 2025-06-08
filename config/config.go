@@ -66,13 +66,13 @@ func (archiveType *ConfigToolArchiveType) IsTar() bool {
 }
 
 type ConfigToolArchive struct {
-	U string
-	H string
-	T ConfigToolArchiveType
+	Url   string
+	Hash  string
+	Type  ConfigToolArchiveType
+	Links map[string]string
 }
 
 type ConfigTool struct {
-	Symlinks map[string]string
 	Source   ConfigToolSource
 	Archives map[ConfigToolArch]ConfigToolArchive
 }
@@ -84,10 +84,12 @@ type Config struct {
 		ConfigURI string `mapstructure:"config_uri"`
 	}
 	InstallTools     []string `mapstructure:"install_tools"`
-	UsrLocal         string   `mapstructure:"usr_local"`
 	DevcontainerFile string   `mapstructure:"devcontainer_file"`
 	Tools            ConfigTools
 	CacheDir         string `mapstructure:"cache_dir"`
+	Remote           struct {
+		Workdir string
+	}
 
 	FilePath string `mapstructure:"-"`
 }
@@ -120,60 +122,69 @@ func LoadConfig(loadConfigFile string) (ConfigViper, error) {
 			Source: ToolSourceArchive,
 			Archives: map[ConfigToolArch]ConfigToolArchive{
 				ToolArch_x86_64: {
-					U: "https://github.com/sharkdp/fd/releases/download/v10.2.0/fd-v10.2.0-x86_64-unknown-linux-musl.tar.gz",
-					H: "d9bfa25ec28624545c222992e1b00673b7c9ca5eb15393c40369f10b28f9c932",
-					T: ArchiveTypeTarGz,
+					Url:  "https://github.com/sharkdp/fd/releases/download/v10.2.0/fd-v10.2.0-x86_64-unknown-linux-musl.tar.gz",
+					Hash: "d9bfa25ec28624545c222992e1b00673b7c9ca5eb15393c40369f10b28f9c932",
+					Type: ArchiveTypeTarGz,
+					Links: map[string]string{
+						"/usr/local/bin/fd": "fd-v10.2.0-x86_64-unknown-linux-musl/fd",
+					},
 				},
 				ToolArch_aarch64: {
-					U: "https://github.com/sharkdp/fd/releases/download/v10.2.0/fd-v10.2.0-aarch64-unknown-linux-musl.tar.gz",
-					H: "4e8e596646d047d904f2c5ca74b39dccc69978b6e1fb101094e534b0b59c1bb0",
-					T: ArchiveTypeTarGz,
+					Url:  "https://github.com/sharkdp/fd/releases/download/v10.2.0/fd-v10.2.0-aarch64-unknown-linux-musl.tar.gz",
+					Hash: "4e8e596646d047d904f2c5ca74b39dccc69978b6e1fb101094e534b0b59c1bb0",
+					Type: ArchiveTypeTarGz,
+					Links: map[string]string{
+						"/usr/local/bin/fd": "fd-v10.2.0-aarch64-unknown-linux-musl/fd",
+					},
 				},
-			},
-			Symlinks: map[string]string{
-				"/usr/local/bin/fd": "fd",
 			},
 		},
 		"ripgrep": {
 			Source: ToolSourceArchive,
 			Archives: map[ConfigToolArch]ConfigToolArchive{
 				ToolArch_x86_64: {
-					U: "https://github.com/BurntSushi/ripgrep/releases/download/14.1.1/ripgrep-14.1.1-x86_64-unknown-linux-musl.tar.gz",
-					H: "4cf9f2741e6c465ffdb7c26f38056a59e2a2544b51f7cc128ef28337eeae4d8e",
-					T: ArchiveTypeTarGz,
+					Url:  "https://github.com/BurntSushi/ripgrep/releases/download/14.1.1/ripgrep-14.1.1-x86_64-unknown-linux-musl.tar.gz",
+					Hash: "4cf9f2741e6c465ffdb7c26f38056a59e2a2544b51f7cc128ef28337eeae4d8e",
+					Type: ArchiveTypeTarGz,
+					Links: map[string]string{
+						"/usr/local/bin/rg": "ripgrep-14.1.1-x86_64-unknown-linux-musl/rg",
+					},
 				},
 				ToolArch_aarch64: {
-					U: "https://github.com/BurntSushi/ripgrep/releases/download/14.1.1/ripgrep-14.1.1-armv7-unknown-linux-musleabi.tar.gz",
-					H: "e6512cb9d3d53050022b9236edd2eff4244cea343a451bfb3c008af23d0000e5",
-					T: ArchiveTypeTarGz,
+					Url:  "https://github.com/BurntSushi/ripgrep/releases/download/14.1.1/ripgrep-14.1.1-armv7-unknown-linux-musleabi.tar.gz",
+					Hash: "e6512cb9d3d53050022b9236edd2eff4244cea343a451bfb3c008af23d0000e5",
+					Type: ArchiveTypeTarGz,
+					Links: map[string]string{
+						"/usr/local/bin/rg": "ripgrep-14.1.1-armv7-unknown-linux-musl/rg",
+					},
 				},
-			},
-			Symlinks: map[string]string{
-				"/usr/local/bin/rg": "rg",
 			},
 		},
 		"gosu": {
 			Source: ToolSourceArchive,
 			Archives: map[ConfigToolArch]ConfigToolArchive{
 				ToolArch_x86_64: {
-					U: "https://github.com/tianon/gosu/releases/download/1.17/gosu-amd64",
-					H: "bbc4136d03ab138b1ad66fa4fc051bafc6cc7ffae632b069a53657279a450de3",
-					T: ArchiveTypeBin,
+					Url:  "https://github.com/tianon/gosu/releases/download/1.17/gosu-amd64",
+					Hash: "bbc4136d03ab138b1ad66fa4fc051bafc6cc7ffae632b069a53657279a450de3",
+					Type: ArchiveTypeBin,
+					Links: map[string]string{
+						"/usr/local/bin/gosu": "$bin",
+					},
 				},
 				ToolArch_aarch64: {
-					U: "https://github.com/tianon/gosu/releases/download/1.17/gosu-arm64",
-					H: "c3805a85d17f4454c23d7059bcb97e1ec1af272b90126e79ed002342de08389b",
-					T: ArchiveTypeBin,
+					Url:  "https://github.com/tianon/gosu/releases/download/1.17/gosu-arm64",
+					Hash: "c3805a85d17f4454c23d7059bcb97e1ec1af272b90126e79ed002342de08389b",
+					Type: ArchiveTypeBin,
+					Links: map[string]string{
+						"/usr/local/bin/gosu": "$bin",
+					},
 				},
-			},
-			Symlinks: map[string]string{
-				"/usr/local/bin/gosu": "$bin",
 			},
 		},
 	})
 	configViperViper.SetDefault("install_tools", []string{"fd", "ripgrep", "gosu"})
 	configViperViper.SetDefault("neovim.config_uri", "file://~/.config/nvim")
-	configViperViper.SetDefault("usr_local", "/opt/nvim-mindevc")
+	configViperViper.SetDefault("remote.workdir", "/opt/nvim-mindevc")
 	configViperViper.SetDefault("cache_dir", "~/.cache/nvim-mindevc")
 
 	if loadConfigFile != "" {

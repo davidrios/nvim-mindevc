@@ -284,20 +284,30 @@ func ExtractTool(
 	return toolDestDir, nil
 }
 
-func DownloadTools(myConfig config.Config, arch config.ConfigToolArch) error {
+func GetDownloadsDir(base string, arch string) (string, error) {
+	downloadDir := filepath.Join(base, "tools", "_download", string(arch))
+
+	if err := os.MkdirAll(downloadDir, 0o750); err != nil {
+		return "", fmt.Errorf("error creating cache dir: %w", err)
+	}
+
+	return downloadDir, nil
+}
+
+func DownloadTools(myConfig config.Config, arch config.ConfigToolArch) ([]string, error) {
 	slog.Debug("downloading tools")
 
 	cacheDir, err := config.ExpandHome(myConfig.CacheDir)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	downloadDir := filepath.Join(cacheDir, "tools", "_download")
-
-	if err := os.MkdirAll(downloadDir, 0o750); err != nil {
-		return fmt.Errorf("error creating cache dir: %w", err)
+	downloadDir, err := GetDownloadsDir(cacheDir, string(arch))
+	if err != nil {
+		return nil, fmt.Errorf("error creating cache dir: %w", err)
 	}
 
+	paths := []string{}
 	for _, toolName := range myConfig.InstallTools {
 		tool, ok := myConfig.Tools[toolName]
 		if !ok {
@@ -313,7 +323,7 @@ func DownloadTools(myConfig config.Config, arch config.ConfigToolArch) error {
 				continue
 			}
 
-			parsedUrl, err := url.Parse(archive.U)
+			parsedUrl, err := url.Parse(archive.Url)
 			if err != nil {
 				slog.Warn("invalid url for tool", "tool", toolName)
 				continue
@@ -321,20 +331,11 @@ func DownloadTools(myConfig config.Config, arch config.ConfigToolArch) error {
 
 			switch parsedUrl.Scheme {
 			case "https", "http":
-				fname, err := DownloadToolHttp(downloadDir, archive.U, parsedUrl, archive.H)
+				fname, err := DownloadToolHttp(downloadDir, archive.Url, parsedUrl, archive.Hash)
 				if err != nil {
-					return err
+					return nil, err
 				}
-
-				extracted, err := ExtractTool(toolName, archive.T, fname)
-				if err != nil {
-					return err
-				}
-
-				err = CreateToolSymlinks(extracted, tool.Symlinks)
-				if err != nil {
-					return err
-				}
+				paths = append(paths, fname)
 
 			default:
 				slog.Warn("unsupported scheme for tool", "tool", toolName, "scheme", parsedUrl.Scheme)
@@ -342,7 +343,7 @@ func DownloadTools(myConfig config.Config, arch config.ConfigToolArch) error {
 			}
 
 		case config.ToolSourceGitRepo:
-			slog.Warn("git-repo tool source not implemented")
+			slog.Warn("git-repo tool source not implemented yet")
 			continue
 
 		default:
@@ -350,8 +351,8 @@ func DownloadTools(myConfig config.Config, arch config.ConfigToolArch) error {
 			continue
 		}
 
-		slog.Debug("installed", "tool", toolName)
+		slog.Debug("downloaded", "tool", toolName)
 	}
 
-	return nil
+	return paths, nil
 }
