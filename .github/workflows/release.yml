@@ -58,6 +58,8 @@ jobs:
     name: Create Release
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     if: always() && needs.build.result == 'success'
 
     steps:
@@ -107,8 +109,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
+          token: ${{ secrets.GITHUB_TOKEN }}
           tag_name: ${{ steps.release_info.outputs.tag_name }}
           name: ${{ steps.release_info.outputs.release_name }}
           prerelease: ${{ steps.release_info.outputs.prerelease }}
@@ -137,5 +140,3 @@ jobs:
             chmod +x nvim-mindevc-linux-aarch64
             sudo mv nvim-mindevc-linux-aarch64 /usr/local/bin/nvim-mindevc
             ```
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
