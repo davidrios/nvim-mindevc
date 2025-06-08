@@ -217,10 +217,10 @@ func CreateToolSymlinks(extractedTo string, symlinks map[string]string) error {
 
 func ExtractTool(
 	toolName string,
-	archive config.ConfigToolArchive,
+	archiveType config.ConfigToolArchiveType,
 	fname string,
 ) (string, error) {
-	if !archive.T.IsValid() {
+	if !archiveType.IsValid() {
 		return "", fmt.Errorf("unknown archive type")
 	}
 
@@ -231,7 +231,7 @@ func ExtractTool(
 
 	var err error
 
-	if archive.T == config.ArchiveTypeZip {
+	if archiveType == config.ArchiveTypeZip {
 		err = extractZip(fname, toolDestDir)
 		if err != nil {
 			return "", fmt.Errorf("could not extract zip: %w", err)
@@ -243,7 +243,7 @@ func ExtractTool(
 		}
 		defer toolFile.Close()
 
-		if archive.T == config.ArchiveTypeBin {
+		if archiveType == config.ArchiveTypeBin {
 			destFile, err := os.OpenFile(
 				filepath.Join(toolDestDir, toolName),
 				os.O_CREATE|os.O_RDWR|os.O_TRUNC,
@@ -259,7 +259,7 @@ func ExtractTool(
 		} else {
 			var toolFileReader io.Reader = toolFile
 
-			switch archive.T {
+			switch archiveType {
 			case config.ArchiveTypeTarGz:
 				toolFileReader, err = gzip.NewReader(toolFile)
 			case config.ArchiveTypeTarBz2:
@@ -272,7 +272,7 @@ func ExtractTool(
 				return "", fmt.Errorf("error extracting: %w", err)
 			}
 
-			if archive.T.IsTar() {
+			if archiveType.IsTar() {
 				err = extractTar(toolFileReader, toolDestDir)
 				if err != nil {
 					return "", fmt.Errorf("failed to extract tar: %w", err)
@@ -326,7 +326,7 @@ func DownloadTools(myConfig config.Config, arch config.ConfigToolArch) error {
 					return err
 				}
 
-				extracted, err := ExtractTool(toolName, archive, fname)
+				extracted, err := ExtractTool(toolName, archive.T, fname)
 				if err != nil {
 					return err
 				}

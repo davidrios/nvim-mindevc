@@ -277,33 +277,33 @@ func TestExtractAndLinkTool(t *testing.T) {
 	binHash := "3f212a63b283e660406da7b022b52be26ea74a893c41ce093b00b2e5b0b36d5c"
 
 	testTable := []struct {
-		name    string
-		archive config.ConfigToolArchive
-		fname   string
-		prefix  string
+		name        string
+		archiveType config.ConfigToolArchiveType
+		fname       string
+		prefix      string
 	}{{
-		name:    "tool1",
-		archive: config.ConfigToolArchive{T: config.ArchiveTypeZip},
-		fname:   "tool.zip",
+		name:        "tool1",
+		archiveType: config.ArchiveTypeZip,
+		fname:       "tool.zip",
 	}, {
-		name:    "tool2",
-		archive: config.ConfigToolArchive{T: config.ArchiveTypeTarGz},
-		fname:   "tool.tar.gz",
-		prefix:  "extracted-v1.0.0",
+		name:        "tool2",
+		archiveType: config.ArchiveTypeTarGz,
+		fname:       "tool.tar.gz",
+		prefix:      "extracted-v1.0.0",
 	}, {
-		name:    "tool3",
-		archive: config.ConfigToolArchive{T: config.ArchiveTypeTarBz2},
-		fname:   "tool.tar.bz2",
-		prefix:  "extracted-v1.0.0",
+		name:        "tool3",
+		archiveType: config.ArchiveTypeTarBz2,
+		fname:       "tool.tar.bz2",
+		prefix:      "extracted-v1.0.0",
 	}, {
-		name:    "tool4",
-		archive: config.ConfigToolArchive{T: config.ArchiveTypeTarXz},
-		fname:   "tool.tar.xz",
-		prefix:  "extracted-v1.0.0",
+		name:        "tool4",
+		archiveType: config.ArchiveTypeTarXz,
+		fname:       "tool.tar.xz",
+		prefix:      "extracted-v1.0.0",
 	}, {
-		name:    "tool5",
-		archive: config.ConfigToolArchive{T: config.ArchiveTypeBin},
-		fname:   "rg",
+		name:        "tool5",
+		archiveType: config.ArchiveTypeBin,
+		fname:       "rg",
 	},
 	}
 	for _, tv := range testTable {
@@ -326,12 +326,12 @@ func TestExtractAndLinkTool(t *testing.T) {
 				t.Fatalf("unexpected error: %s", err)
 			}
 
-			extracted, err := ExtractTool(tv.name, tv.archive, downloadFname)
+			extracted, err := ExtractTool(tv.name, tv.archiveType, downloadFname)
 			if err != nil {
 				t.Fatalf("unexpected error: %s", err)
 			}
 
-			if tv.archive.T == config.ArchiveTypeBin {
+			if tv.archiveType == config.ArchiveTypeBin {
 				CheckFileHash(t, filepath.Join(extracted, tv.prefix, tv.name), binHash)
 			} else {
 				for fname, hash := range files {
@@ -344,7 +344,7 @@ func TestExtractAndLinkTool(t *testing.T) {
 				t.Fatalf("error: %s", err)
 			}
 
-			if tv.archive.T == config.ArchiveTypeBin {
+			if tv.archiveType == config.ArchiveTypeBin {
 				link := filepath.Join(tempDir, "_links", tv.name)
 				err = CreateToolSymlinks(extracted, map[string]string{link: "$bin"})
 				if err != nil {
