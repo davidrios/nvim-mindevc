@@ -54,6 +54,7 @@ jobs:
           gzip -1 nvim-mindevc-${{ matrix.suffix }}
 
       - name: Upload artifact
+        id: upload_artifact
         uses: actions/upload-artifact@v4
         with:
           name: nvim-mindevc-${{ matrix.suffix }}.gz
@@ -62,7 +63,7 @@ jobs:
       - uses: actions/attest-build-provenance@v2
         with:
           subject-name: nvim-mindevc-${{ matrix.suffix }}.gz
-          subject-digest: sha256:${{ steps.upload.outputs.artifact-digest }}
+          subject-digest: sha256:${{ steps.upload_artifact.outputs.artifact-digest }}
 
   release:
     name: Create Release
@@ -105,7 +106,7 @@ jobs:
             echo "prerelease=false" >> $GITHUB_OUTPUT
           else
             echo "is_tag_release=false" >> $GITHUB_OUTPUT
-            echo "tag_name=nightly-$(date +'%Y%m%d')" >> $GITHUB_OUTPUT
+            echo "tag_name=nightly" >> $GITHUB_OUTPUT
             echo "release_name=Nightly $(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
             echo "prerelease=true" >> $GITHUB_OUTPUT
           fi
@@ -113,8 +114,8 @@ jobs:
       - name: Delete existing nightly release
         if: steps.release_info.outputs.is_tag_release == 'false'
         run: |
-          gh release delete nightly-$(date +'%Y%m%d') --yes || true
-          git push origin :refs/tags/nightly-$(date +'%Y%m%d') || true
+          gh release delete nightly --yes || true
+          git push origin :refs/tags/nightly || true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
