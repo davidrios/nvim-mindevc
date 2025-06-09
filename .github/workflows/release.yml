@@ -12,6 +12,10 @@ jobs:
   build:
     name: Build and Release
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+      attestations: write
     strategy:
       matrix:
         include:
@@ -54,6 +58,11 @@ jobs:
         with:
           name: nvim-mindevc-${{ matrix.suffix }}.gz
           path: nvim-mindevc-${{ matrix.suffix }}.gz
+
+      - uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: nvim-mindevc-${{ matrix.suffix }}.gz
+          subject-digest: sha256:${{ steps.upload.outputs.artifact-digest }}
 
   release:
     name: Create Release
