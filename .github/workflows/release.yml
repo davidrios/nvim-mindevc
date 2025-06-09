@@ -5,7 +5,6 @@ on:
     tags:
       - 'v*'
   schedule:
-    # Nightly at 2 AM UTC
     - cron: '0 2 * * *'
   workflow_dispatch:
 
@@ -46,13 +45,15 @@ jobs:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
           CGO_ENABLED: 0
-        run: go build -ldflags "-s -w" -o nvim-mindevc-${{ matrix.suffix }} .
+        run: |
+          go build -ldflags "-s -w" -o nvim-mindevc-${{ matrix.suffix }} .
+          gzip -1 nvim-mindevc-${{ matrix.suffix }}
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: nvim-mindevc-${{ matrix.suffix }}
-          path: nvim-mindevc-${{ matrix.suffix }}
+          name: nvim-mindevc-${{ matrix.suffix }}.gz
+          path: nvim-mindevc-${{ matrix.suffix }}.gz
 
   release:
     name: Create Release
@@ -119,11 +120,6 @@ jobs:
             release-assets/*
           body: |
             ${{ steps.release_info.outputs.is_tag_release == 'true' && 'Release' || 'Nightly build from main branch' }}
-
-            ## Checksums
-            ```
-            $(cat release-assets/checksums.txt)
-            ```
 
             ## Installation
 
