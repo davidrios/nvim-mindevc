@@ -4,8 +4,8 @@ on:
   push:
     tags:
       - 'v*'
-  schedule:
-    - cron: '0 2 * * *'
+  # schedule:
+  #   - cron: '0 2 * * *'
   workflow_dispatch:
 
 jobs:
@@ -136,12 +136,14 @@ jobs:
 
             ```bash
             # Linux x86_64
-            wget https://github.com/${{ github.repository }}/releases/download/${{ steps.release_info.outputs.tag_name }}/nvim-mindevc-linux-x86_64
+            wget https://github.com/${{ github.repository }}/releases/download/${{ steps.release_info.outputs.tag_name }}/nvim-mindevc-linux-x86_64.gz
+            gunzip nvim-mindevc-linux-x86_64.gz
             chmod +x nvim-mindevc-linux-x86_64
             sudo mv nvim-mindevc-linux-x86_64 /usr/local/bin/nvim-mindevc
 
             # Linux aarch64
-            wget https://github.com/${{ github.repository }}/releases/download/${{ steps.release_info.outputs.tag_name }}/nvim-mindevc-linux-aarch64
+            wget https://github.com/${{ github.repository }}/releases/download/${{ steps.release_info.outputs.tag_name }}/nvim-mindevc-linux-aarch64.gz
+            gunzip nvim-mindevc-linux-aarch64.gz
             chmod +x nvim-mindevc-linux-aarch64
             sudo mv nvim-mindevc-linux-aarch64 /usr/local/bin/nvim-mindevc
             ```
