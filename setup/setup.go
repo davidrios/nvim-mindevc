@@ -40,7 +40,13 @@ func Setup(myConfig config.ConfigViper, devcontainer config.Devcontainer) error 
 	arch = strings.TrimSpace(arch)
 	slog.Debug("container arch", "v", arch)
 
-	if _, err := DownloadTools(myConfig.Config, config.ConfigToolArch(arch)); err != nil {
+	withNvimMindevcTools := config.WithNvimMindevcTool(myConfig.Config)
+
+	if _, err := DownloadTools(myConfig.Config.CacheDir,
+		config.ConfigToolArch(arch),
+		withNvimMindevcTools.InstallTools,
+		withNvimMindevcTools.Tools,
+	); err != nil {
 		return err
 	}
 

@@ -243,7 +243,10 @@ func ExtractTool(
 		}
 		defer toolFile.Close()
 
-		if archiveType == config.ArchiveTypeBin {
+		var toolFileReader io.Reader = toolFile
+
+		switch archiveType {
+		case config.ArchiveTypeBin, config.ArchiveTypeBinGz, config.ArchiveTypeBinBz2, config.ArchiveTypeBinXz:
 			destFile, err := os.OpenFile(
 				filepath.Join(toolDestDir, toolName),
 				os.O_CREATE|os.O_RDWR|os.O_TRUNC,
@@ -253,12 +256,24 @@ func ExtractTool(
 			}
 			defer destFile.Close()
 
-			if _, err := io.Copy(destFile, toolFile); err != nil {
+			switch archiveType {
+			case config.ArchiveTypeBinGz:
+				toolFileReader, err = gzip.NewReader(toolFile)
+			case config.ArchiveTypeBinBz2:
+				toolFileReader = bzip2.NewReader(toolFile)
+			case config.ArchiveTypeBinXz:
+				toolFileReader, err = xz.NewReader(toolFile)
+			}
+
+			if err != nil {
+				return "", fmt.Errorf("error extracting: %w", err)
+			}
+
+			if _, err := io.Copy(destFile, toolFileReader); err != nil {
 				return "", fmt.Errorf("error writing tool file: %w", err)
 			}
-		} else {
-			var toolFileReader io.Reader = toolFile
 
+		case config.ArchiveTypeTarGz, config.ArchiveTypeTarBz2, config.ArchiveTypeTarXz:
 			switch archiveType {
 			case config.ArchiveTypeTarGz:
 				toolFileReader, err = gzip.NewReader(toolFile)
@@ -294,10 +309,15 @@ func GetDownloadsDir(base string, arch string) (string, error) {
 	return downloadDir, nil
 }
 
-func DownloadTools(myConfig config.Config, arch config.ConfigToolArch) ([]string, error) {
+func DownloadTools(
+	cacheDir string,
+	arch config.ConfigToolArch,
+	toolNames []string,
+	tools config.ConfigTools,
+) ([]string, error) {
 	slog.Debug("downloading tools")
 
-	cacheDir, err := config.ExpandHome(myConfig.CacheDir)
+	cacheDir, err := config.ExpandHome(cacheDir)
 	if err != nil {
 		return nil, err
 	}
@@ -308,8 +328,8 @@ func DownloadTools(myConfig config.Config, arch config.ConfigToolArch) ([]string
 	}
 
 	paths := []string{}
-	for _, toolName := range myConfig.InstallTools {
-		tool, ok := myConfig.Tools[toolName]
+	for _, toolName := range toolNames {
+		tool, ok := tools[toolName]
 		if !ok {
 			slog.Debug("tool does not exist", "tool", toolName)
 			continue

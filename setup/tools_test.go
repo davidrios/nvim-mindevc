@@ -274,7 +274,6 @@ func TestExtractAndLinkTool(t *testing.T) {
 		"_links/aax": "aa/aa",
 		"_links/ddx": "bb/cc/dd/dd",
 	}
-	binHash := "3f212a63b283e660406da7b022b52be26ea74a893c41ce093b00b2e5b0b36d5c"
 
 	testTable := []struct {
 		name        string
@@ -304,6 +303,18 @@ func TestExtractAndLinkTool(t *testing.T) {
 		name:        "tool5",
 		archiveType: config.ArchiveTypeBin,
 		fname:       "rg",
+	}, {
+		name:        "tool6",
+		archiveType: config.ArchiveTypeBinGz,
+		fname:       "rg.gz",
+	}, {
+		name:        "tool7",
+		archiveType: config.ArchiveTypeBinBz2,
+		fname:       "rg.bz2",
+	}, {
+		name:        "tool8",
+		archiveType: config.ArchiveTypeBinXz,
+		fname:       "rg.xz",
 	},
 	}
 	for _, tv := range testTable {
@@ -331,9 +342,10 @@ func TestExtractAndLinkTool(t *testing.T) {
 				t.Fatalf("unexpected error: %s", err)
 			}
 
-			if tv.archiveType == config.ArchiveTypeBin {
-				CheckFileHash(t, filepath.Join(extracted, tv.prefix, tv.name), binHash)
-			} else {
+			switch tv.archiveType {
+			case config.ArchiveTypeBin, config.ArchiveTypeBinGz, config.ArchiveTypeBinBz2, config.ArchiveTypeBinXz:
+				CheckFileHash(t, filepath.Join(extracted, tv.prefix, tv.name), "3f212a63b283e660406da7b022b52be26ea74a893c41ce093b00b2e5b0b36d5c")
+			case config.ArchiveTypeTarGz, config.ArchiveTypeTarBz2, config.ArchiveTypeTarXz:
 				for fname, hash := range files {
 					CheckFileHash(t, filepath.Join(extracted, tv.prefix, fname), hash)
 				}
@@ -344,7 +356,8 @@ func TestExtractAndLinkTool(t *testing.T) {
 				t.Fatalf("error: %s", err)
 			}
 
-			if tv.archiveType == config.ArchiveTypeBin {
+			switch tv.archiveType {
+			case config.ArchiveTypeBin, config.ArchiveTypeBinGz, config.ArchiveTypeBinBz2, config.ArchiveTypeBinXz:
 				link := filepath.Join(tempDir, "_links", tv.name)
 				err = CreateToolSymlinks(extracted, map[string]string{link: "$bin"})
 				if err != nil {
@@ -354,7 +367,7 @@ func TestExtractAndLinkTool(t *testing.T) {
 				if err != nil {
 					t.Fatalf("error: %s", err)
 				}
-			} else {
+			case config.ArchiveTypeTarGz, config.ArchiveTypeTarBz2, config.ArchiveTypeTarXz:
 				linksWithPrefix := map[string]string{}
 				for link, target := range links {
 					linksWithPrefix[filepath.Join(tempDir, link)] = filepath.Join(tv.prefix, target)

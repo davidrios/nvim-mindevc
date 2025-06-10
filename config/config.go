@@ -45,10 +45,16 @@ const (
 	ArchiveTypeTarGz  ConfigToolArchiveType = "tar.gz"
 	ArchiveTypeZip    ConfigToolArchiveType = "zip"
 	ArchiveTypeBin    ConfigToolArchiveType = "bin"
+	ArchiveTypeBinGz  ConfigToolArchiveType = "bin.gz"
+	ArchiveTypeBinBz2 ConfigToolArchiveType = "bin.bz2"
+	ArchiveTypeBinXz  ConfigToolArchiveType = "bin.xz"
 )
 
 var ValidArchiveTypes map[string]struct{} = map[string]struct{}{
 	string(ArchiveTypeBin):    {},
+	string(ArchiveTypeBinGz):  {},
+	string(ArchiveTypeBinBz2): {},
+	string(ArchiveTypeBinXz):  {},
 	string(ArchiveTypeZip):    {},
 	string(ArchiveTypeTarGz):  {},
 	string(ArchiveTypeTarBz2): {},
@@ -279,4 +285,39 @@ func ExpandHome(pathstr string) (string, error) {
 	}
 
 	return pathstr, nil
+}
+
+type NvimMindevcTool struct {
+	InstallTools []string
+	Tools        ConfigTools
+}
+
+const NvimMindevcVersion string = "nightly"
+
+func WithNvimMindevcTool(config Config) NvimMindevcTool {
+	installTools := config.InstallTools
+	installTools = append(installTools, "nvim-mindevc")
+	tools := make(ConfigTools, len(config.Tools)+1)
+	tools["nvim-mindevc"] = ConfigTool{
+		Source: ToolSourceArchive,
+		Archives: map[ConfigToolArch]ConfigToolArchive{
+			ToolArch_aarch64: {
+				Url:   fmt.Sprintf("https://github.com/davidrios/nvim-mindevc/releases/download/%s/nvim-mindevc-linux-aarch64.gz", NvimMindevcVersion),
+				Hash:  "c949c49a2cbff9ca7d264da5fba1a12ac45db6a2a9b033dae1f2552db1f1fba6",
+				Type:  ArchiveTypeBinGz,
+				Links: map[string]string{"/usr/local/bin/nvim-mindevc": "$bin"},
+			},
+			ToolArch_x86_64: {
+				Url:   fmt.Sprintf("https://github.com/davidrios/nvim-mindevc/releases/download/%s/nvim-mindevc-linux-x86_64.gz", NvimMindevcVersion),
+				Hash:  "5c71e6044efeaffb00b8a71136c94a427d3919c9d34ad2f863aa23898ddc724f",
+				Type:  ArchiveTypeBinGz,
+				Links: map[string]string{"/usr/local/bin/nvim-mindevc": "$bin"},
+			},
+		},
+	}
+
+	return NvimMindevcTool{
+		InstallTools: installTools,
+		Tools:        tools,
+	}
 }
