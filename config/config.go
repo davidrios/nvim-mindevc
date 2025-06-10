@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"log/slog"
+	"maps"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -296,8 +297,10 @@ const NvimMindevcVersion string = "nightly"
 
 func WithNvimMindevcTool(config Config) NvimMindevcTool {
 	installTools := config.InstallTools
-	installTools = append(installTools, "nvim-mindevc")
 	tools := make(ConfigTools, len(config.Tools)+1)
+	maps.Copy(tools, config.Tools)
+
+	installTools = append(installTools, "nvim-mindevc")
 	tools["nvim-mindevc"] = ConfigTool{
 		Source: ToolSourceArchive,
 		Archives: map[ConfigToolArch]ConfigToolArchive{

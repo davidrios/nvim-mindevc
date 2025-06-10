@@ -35,7 +35,7 @@ func DownloadToolHttp(downloadDir string, rawUrl string, parsedUrl *url.URL, exp
 
 		gotHash := fmt.Sprintf("%x", h.Sum(nil))
 		if gotHash == expectedHash {
-			slog.Debug("using cached file", "hash", expectedHash)
+			slog.Debug("using cached file", "url", rawUrl, "hash", expectedHash)
 			return cachedFilename, nil
 		}
 
@@ -299,8 +299,8 @@ func ExtractTool(
 	return toolDestDir, nil
 }
 
-func GetDownloadsDir(base string, arch string) (string, error) {
-	downloadDir := filepath.Join(base, "tools", "_download", string(arch))
+func GetDownloadsDir(base string) (string, error) {
+	downloadDir := filepath.Join(base, "tools", "_download")
 
 	if err := os.MkdirAll(downloadDir, 0o750); err != nil {
 		return "", fmt.Errorf("error creating cache dir: %w", err)
@@ -322,7 +322,7 @@ func DownloadTools(
 		return nil, err
 	}
 
-	downloadDir, err := GetDownloadsDir(cacheDir, string(arch))
+	downloadDir, err := GetDownloadsDir(cacheDir)
 	if err != nil {
 		return nil, fmt.Errorf("error creating cache dir: %w", err)
 	}
