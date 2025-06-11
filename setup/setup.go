@@ -206,5 +206,28 @@ func RemoteSetup(myConfig config.ConfigViper) error {
 		return err
 	}
 
+	caFile := "/etc/ssl/certs/ca-certificates.crt"
+	if err := os.MkdirAll(filepath.Dir(caFile), 0o755); err != nil {
+		return err
+	}
+
+	if _, err := os.Stat(caFile); err != nil {
+		fp, err := os.Create(caFile)
+		if err != nil {
+			return err
+		}
+		defer fp.Close()
+
+		sfp, err := os.Open(filepath.Join(myConfig.Config.Remote.Workdir, "cacert.pem"))
+		if err != nil {
+			return err
+		}
+		defer sfp.Close()
+
+		if _, err := io.Copy(fp, sfp); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
