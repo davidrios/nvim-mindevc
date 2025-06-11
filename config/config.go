@@ -329,13 +329,13 @@ func WithNvimMindevcTool(config Config) NvimMindevcTool {
 		Archives: map[ConfigToolArch]ConfigToolArchive{
 			ToolArch_aarch64: {
 				Url:   fmt.Sprintf("https://github.com/davidrios/nvim-mindevc/releases/download/%s/nvim-mindevc-linux-aarch64.gz", NvimMindevcVersion),
-				Hash:  "c949c49a2cbff9ca7d264da5fba1a12ac45db6a2a9b033dae1f2552db1f1fba6",
+				Hash:  "e33597db93b4d6146c953c8d72f0adcbc62f8b8acdeb68e8a6512369331f84d7",
 				Type:  ArchiveTypeBinGz,
 				Links: map[string]string{"/usr/local/bin/nvim-mindevc": "$bin"},
 			},
 			ToolArch_x86_64: {
 				Url:   fmt.Sprintf("https://github.com/davidrios/nvim-mindevc/releases/download/%s/nvim-mindevc-linux-x86_64.gz", NvimMindevcVersion),
-				Hash:  "5c71e6044efeaffb00b8a71136c94a427d3919c9d34ad2f863aa23898ddc724f",
+				Hash:  "3dc66a36fd12a1b0312fe78a34d968a2f92008982d624ea5e2765d40c0923722",
 				Type:  ArchiveTypeBinGz,
 				Links: map[string]string{"/usr/local/bin/nvim-mindevc": "$bin"},
 			},
