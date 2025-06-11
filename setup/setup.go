@@ -57,6 +57,10 @@ func Setup(myConfig config.ConfigViper, devcontainer config.Devcontainer, useSel
 		return err
 	}
 
+	if err := DownloadAndExtractLocalTools(myConfig.Config.CacheDir); err != nil {
+		return err
+	}
+
 	uploadDir := filepath.Join(myConfig.Config.Remote.Workdir, "tools", "_download")
 	_, err = composeFile.Exec(serviceName, docker.ExecParams{
 		Args: []string{"mkdir", "-p", uploadDir},
@@ -95,7 +99,7 @@ func Setup(myConfig config.ConfigViper, devcontainer config.Devcontainer, useSel
 			}
 			slog.Debug("copied self binary", "p", myPath)
 		} else {
-			slog.Warn("cannot use self binary, incompatible remote os and architecture")
+			slog.Warn("cannot use self binary, incompatible remote os and/or architecture")
 		}
 	}
 

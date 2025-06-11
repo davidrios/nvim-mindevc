@@ -12,7 +12,9 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/ulikunitz/xz"
 
@@ -494,6 +496,36 @@ func LinkTools(
 		}
 
 		slog.Debug("downloaded", "tool", toolName)
+	}
+
+	return nil
+}
+
+func DownloadAndExtractLocalTools(cacheDir string) error {
+	cmd := exec.Command("uname", "-sm")
+	output, err := cmd.Output()
+	if err != nil {
+		return fmt.Errorf("could not get current OS: %w", err)
+	}
+
+	osArch := strings.TrimSpace(string(output))
+	if !strings.Contains(osArch, "Linux") {
+		return fmt.Errorf("Error: TODO, implement other OSes support")
+	}
+	arch := config.ConfigToolArch(osArch[strings.Index(osArch, " ")+1:])
+
+	locDownloaded, err := DownloadTools(cacheDir,
+		config.ConfigToolArch(arch),
+		[]string{"zig"},
+		config.ConfigTools{"zig": config.ZigTool},
+	)
+	if err != nil {
+		return err
+	}
+
+	_, err = ExtractTool("zig", config.ZigTool.Archives[arch].Type, arch, locDownloaded["zig"])
+	if err != nil {
+		return err
 	}
 
 	return nil
