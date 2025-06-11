@@ -10,6 +10,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var cloneFilter string
+
 var gitCloneCmd = &cobra.Command{
 	Use:  "clone <repository> [<directory>]",
 	Args: cobra.MinimumNArgs(1),
@@ -23,11 +25,16 @@ var gitCloneCmd = &cobra.Command{
 			directory = args[1]
 		}
 
-		slog.Info("cloning repository, please wait...", "target_dir", directory)
-		_, err := git.PlainClone(directory, false, &git.CloneOptions{
+		options := git.CloneOptions{
 			URL:      args[0],
 			Progress: os.Stdout,
-		})
+		}
+		// if cloneFilter != "" {
+		// 	options.Filter = cloneFilter
+		// }
+
+		slog.Info("cloning repository, please wait...", "target_dir", directory)
+		_, err := git.PlainClone(directory, false, &options)
 		if err != nil {
 			return err
 		}
@@ -39,4 +46,10 @@ var gitCloneCmd = &cobra.Command{
 
 func init() {
 	gitCmd.AddCommand(gitCloneCmd)
+
+	gitCloneCmd.Flags().StringVar(
+		&cloneFilter,
+		"filter",
+		"",
+		"")
 }
