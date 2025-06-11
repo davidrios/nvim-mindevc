@@ -18,6 +18,34 @@ import (
 	"github.com/ulikunitz/xz"
 )
 
+func DownloadFileHttp(rawUrl string, saveTo string) error {
+	resp, err := http.Get(rawUrl)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("bad status: %s", resp.Status)
+	}
+
+	out, err := os.Create(saveTo)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	read, err := io.Copy(out, resp.Body)
+	if err != nil {
+		return err
+	}
+	if read == 0 {
+		return fmt.Errorf("got empty file")
+	}
+
+	return nil
+}
+
 func DownloadToolHttp(downloadDir string, rawUrl string, parsedUrl *url.URL, expectedHash string) (string, error) {
 	cachedFilename := filepath.Join(downloadDir, expectedHash)
 	slog.Debug("download cache name", "n", cachedFilename)
@@ -43,30 +71,10 @@ func DownloadToolHttp(downloadDir string, rawUrl string, parsedUrl *url.URL, exp
 		os.Remove(cachedFilename)
 	}
 
-	resp, err := http.Get(rawUrl)
+	tmpName := cachedFilename + ".tmp"
+	err := DownloadFileHttp(rawUrl, tmpName)
 	if err != nil {
 		return "", err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("bad status: %s", resp.Status)
-	}
-
-	tmpName := filepath.Join(downloadDir, expectedHash+".tmp")
-
-	out, err := os.Create(tmpName)
-	if err != nil {
-		return "", err
-	}
-	defer out.Close()
-
-	read, err := io.Copy(out, resp.Body)
-	if err != nil {
-		return "", err
-	}
-	if read == 0 {
-		return "", fmt.Errorf("got empty file")
 	}
 
 	f, err := os.Open(tmpName)
