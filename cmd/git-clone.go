@@ -7,10 +7,12 @@ import (
 	"strings"
 
 	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/spf13/cobra"
 )
 
 var cloneFilter string
+var cloneBranch string
 
 var gitCloneCmd = &cobra.Command{
 	Use:  "clone <repository> [<directory>]",
@@ -28,6 +30,10 @@ var gitCloneCmd = &cobra.Command{
 		options := git.CloneOptions{
 			URL:      args[0],
 			Progress: os.Stdout,
+		}
+		if cloneBranch != "" {
+			options.SingleBranch = true
+			options.ReferenceName = plumbing.ReferenceName(cloneBranch)
 		}
 		// if cloneFilter != "" {
 		// 	options.Filter = cloneFilter
@@ -50,6 +56,12 @@ func init() {
 	gitCloneCmd.Flags().StringVar(
 		&cloneFilter,
 		"filter",
+		"",
+		"")
+
+	gitCloneCmd.Flags().StringVar(
+		&cloneBranch,
+		"branch",
 		"",
 		"")
 }
