@@ -14,8 +14,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/davidrios/nvim-mindevc/config"
 	"github.com/ulikunitz/xz"
+
+	"github.com/davidrios/nvim-mindevc/config"
 )
 
 func DownloadFileHttp(rawUrl string, saveTo string) error {
