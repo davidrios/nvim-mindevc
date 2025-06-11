@@ -20,6 +20,7 @@ import (
 
 func DownloadToolHttp(downloadDir string, rawUrl string, parsedUrl *url.URL, expectedHash string) (string, error) {
 	cachedFilename := filepath.Join(downloadDir, expectedHash)
+	slog.Debug("download cache name", "n", cachedFilename)
 
 	if _, err := os.Stat(cachedFilename); err == nil {
 		f, err := os.Open(cachedFilename)
@@ -186,7 +187,7 @@ func CreateToolSymlinks(extractedTo string, symlinks map[string]string) error {
 		var finalTarget string
 
 		if target == "$bin" {
-			finalTarget = extractedTo
+			finalTarget = filepath.Join(extractedTo, filepath.Base(extractedTo))
 			err := os.Chmod(finalTarget, 0o755)
 			if err != nil {
 				return fmt.Errorf("failed to set executable mode: %w", err)
@@ -315,7 +316,7 @@ func DownloadTools(
 	arch config.ConfigToolArch,
 	toolNames []string,
 	tools config.ConfigTools,
-) ([]string, error) {
+) (map[string]string, error) {
 	slog.Debug("downloading tools")
 
 	cacheDir, err := config.ExpandHome(cacheDir)
@@ -328,7 +329,7 @@ func DownloadTools(
 		return nil, fmt.Errorf("error creating cache dir: %w", err)
 	}
 
-	paths := []string{}
+	paths := make(map[string]string)
 	for _, toolName := range toolNames {
 		tool, ok := tools[toolName]
 		if !ok {
@@ -363,7 +364,7 @@ func DownloadTools(
 					}
 					fname = filepath.Join(fname, toolName)
 				}
-				paths = append(paths, fname)
+				paths[toolName] = fname
 
 			default:
 				slog.Warn("unsupported scheme for tool", "tool", toolName, "scheme", parsedUrl.Scheme)
@@ -383,4 +384,91 @@ func DownloadTools(
 	}
 
 	return paths, nil
+}
+
+func ExtractTools(
+	arch config.ConfigToolArch,
+	toolNames []string,
+	tools config.ConfigTools,
+	downloaded map[string]string,
+) (map[string]string, error) {
+	slog.Debug("extracting tools")
+
+	paths := make(map[string]string)
+	for _, toolName := range toolNames {
+		tool, ok := tools[toolName]
+		if !ok {
+			slog.Debug("tool does not exist", "tool", toolName)
+			continue
+		}
+
+		switch tool.Source {
+		case config.ToolSourceArchive:
+			archive, ok := tool.Archives[arch]
+			if !ok {
+				slog.Warn("tool not found for arch", "tool", toolName, "arch", arch)
+				continue
+			}
+			path, err := ExtractTool(toolName, archive.Type, arch, downloaded[toolName])
+			if err != nil {
+				return nil, err
+			}
+
+			paths[toolName] = path
+
+		case config.ToolSourceGitRepo:
+			slog.Warn("git-repo tool source not implemented yet")
+			continue
+
+		default:
+			slog.Warn("invalid tool source", "source", tool.Source)
+			continue
+		}
+
+		slog.Debug("downloaded", "tool", toolName)
+	}
+
+	return paths, nil
+}
+
+func LinkTools(
+	arch config.ConfigToolArch,
+	toolNames []string,
+	tools config.ConfigTools,
+	extracted map[string]string,
+) error {
+	slog.Debug("linking tools")
+
+	for _, toolName := range toolNames {
+		tool, ok := tools[toolName]
+		if !ok {
+			slog.Debug("tool does not exist", "tool", toolName)
+			continue
+		}
+
+		switch tool.Source {
+		case config.ToolSourceArchive:
+			archive, ok := tool.Archives[arch]
+			if !ok {
+				slog.Warn("tool not found for arch", "tool", toolName, "arch", arch)
+				continue
+			}
+			err := CreateToolSymlinks(extracted[toolName], archive.Links)
+			if err != nil {
+				return err
+			}
+
+		case config.ToolSourceGitRepo:
+			slog.Warn("git-repo tool source not implemented yet")
+			continue
+
+		default:
+			slog.Warn("invalid tool source", "source", tool.Source)
+			continue
+		}
+
+		slog.Debug("downloaded", "tool", toolName)
+	}
+
+	return nil
 }

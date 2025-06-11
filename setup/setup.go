@@ -6,6 +6,7 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -14,7 +15,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func Setup(myConfig config.ConfigViper, devcontainer config.Devcontainer) error {
+func Setup(myConfig config.ConfigViper, devcontainer config.Devcontainer, useSelfBinary bool) error {
 	if devcontainer.Spec.DockerComposeFile == "" {
 		return fmt.Errorf("dockerComposeFile property from devcontainer file must not be empty")
 	}
@@ -65,12 +66,37 @@ func Setup(myConfig config.ConfigViper, devcontainer config.Devcontainer) error 
 		return err
 	}
 
-	for _, tool := range downloaded {
-		err = composeFile.CpToService(serviceName, tool, filepath.Join(uploadDir, filepath.Base(tool)))
+	for _, downloadedFile := range downloaded {
+		err = composeFile.CpToService(serviceName, downloadedFile, filepath.Join(uploadDir, filepath.Base(downloadedFile)))
 		if err != nil {
 			return err
 		}
-		slog.Debug("copied tool to remote", "file", tool)
+		slog.Debug("copied tool to remote", "file", downloadedFile)
+	}
+
+	remoteBinary := filepath.Join(uploadDir, "nvim-mindevc")
+
+	if useSelfBinary {
+		cmd := exec.Command("uname", "-sm")
+		output, err := cmd.Output()
+		if err != nil {
+			return fmt.Errorf("could not get current OS: %w", err)
+		}
+
+		osArch := strings.TrimSpace(string(output))
+		if osArch == fmt.Sprintf("Linux %s", arch) {
+			myPath, err := os.Executable()
+			if err != nil {
+				return fmt.Errorf("could not get current binary: %w", err)
+			}
+			err = composeFile.CpToService(serviceName, myPath, remoteBinary)
+			if err != nil {
+				return err
+			}
+			slog.Debug("copied self binary", "p", myPath)
+		} else {
+			slog.Warn("cannot use self binary, incompatible remote os and architecture")
+		}
 	}
 
 	yamlData, err := yaml.Marshal(myConfig.Viper.AllSettings())
@@ -88,7 +114,8 @@ func Setup(myConfig config.ConfigViper, devcontainer config.Devcontainer) error 
 	if _, err := io.Copy(file, bytes.NewReader(yamlData)); err != nil {
 		return fmt.Errorf("unexpected error: %s", err)
 	}
-	err = composeFile.CpToService(serviceName, file.Name(), filepath.Join(myConfig.Config.Remote.Workdir, "config.yaml"))
+	remoteConfig := filepath.Join(myConfig.Config.Remote.Workdir, "config.yaml")
+	err = composeFile.CpToService(serviceName, file.Name(), remoteConfig)
 	if err != nil {
 		return err
 	}
@@ -99,6 +126,60 @@ func Setup(myConfig config.ConfigViper, devcontainer config.Devcontainer) error 
 	}
 
 	slog.Debug("got URL", "url", url, "scheme", url.Scheme)
+
+	output, err := composeFile.Exec(serviceName, docker.ExecParams{
+		Args: []string{remoteBinary, "-v", "-c", remoteConfig, "remote-setup"},
+		User: "root",
+	})
+	if err != nil {
+		return err
+	}
+	slog.Debug("out", "o", output)
+
+	return nil
+}
+
+func RemoteSetup(myConfig config.ConfigViper) error {
+	cmd := exec.Command("uname", "-m")
+	output, err := cmd.Output()
+	if err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			slog.Debug("cmd error", "stderr", exitErr.Stderr)
+		}
+		return fmt.Errorf("error executing: %w", err)
+	}
+
+	arch := strings.TrimSpace(string(output))
+	slog.Debug("container arch", "v", arch)
+
+	downloaded, err := DownloadTools(myConfig.Config.Remote.Workdir,
+		config.ConfigToolArch(arch),
+		myConfig.Config.InstallTools,
+		myConfig.Config.Tools,
+	)
+	if err != nil {
+		return err
+	}
+
+	extracted, err := ExtractTools(
+		config.ConfigToolArch(arch),
+		myConfig.Config.InstallTools,
+		myConfig.Config.Tools,
+		downloaded,
+	)
+	if err != nil {
+		return err
+	}
+
+	err = LinkTools(
+		config.ConfigToolArch(arch),
+		myConfig.Config.InstallTools,
+		myConfig.Config.Tools,
+		extracted,
+	)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

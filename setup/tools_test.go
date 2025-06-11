@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -232,7 +233,7 @@ func TestDownloadToolHttp_CachingBehavior(t *testing.T) {
 	}
 }
 
-func CheckFileHash(t *testing.T, fpath string, hash string) {
+func THCheckFileHash(t *testing.T, fpath string, hash string) {
 	t.Helper()
 	fp, err := os.Open(fpath)
 	if err != nil {
@@ -252,18 +253,18 @@ func CheckFileHash(t *testing.T, fpath string, hash string) {
 	}
 }
 
-func TestExtractAndLinkTool(t *testing.T) {
-	tempDir, err := os.MkdirTemp("", "test-extract-link")
+func THValidateToolLink(t *testing.T, link string) {
+	t.Helper()
+	stat, err := os.Stat(link)
 	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
+		t.Fatalf("error: %s", err)
 	}
-	defer os.RemoveAll(tempDir)
-
-	downloadDir := filepath.Join(tempDir, "_download")
-	if err = os.MkdirAll(downloadDir, 0o750); err != nil {
-		t.Fatalf("%s", err)
+	if stat.IsDir() {
+		t.Fatalf("expecting file link")
 	}
+}
 
+func TestExtractAndLinkTool(t *testing.T) {
 	files := map[string]string{
 		"a":           "87428fc522803d31065e7bce3cf03fe475096631e5e07bbd7a0fde60c4cf25c7",
 		"aa/aa":       "d9cd8155764c3543f10fad8a480d743137466f8d55213c8eaefcd12f06d43a80",
@@ -319,6 +320,17 @@ func TestExtractAndLinkTool(t *testing.T) {
 	}
 	for _, tv := range testTable {
 		t.Run(tv.name, func(t *testing.T) {
+			tempDir, err := os.MkdirTemp("", "test-extract-link")
+			if err != nil {
+				t.Fatalf("Failed to create temp dir: %v", err)
+			}
+			defer os.RemoveAll(tempDir)
+
+			downloadDir := filepath.Join(tempDir, "_download")
+			if err = os.MkdirAll(downloadDir, 0o750); err != nil {
+				t.Fatalf("%s", err)
+			}
+
 			downloadFname := filepath.Join(downloadDir, tv.fname)
 
 			fp, err := os.OpenFile(downloadFname, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0o644)
@@ -344,10 +356,10 @@ func TestExtractAndLinkTool(t *testing.T) {
 
 			switch tv.archiveType {
 			case config.ArchiveTypeBin, config.ArchiveTypeBinGz, config.ArchiveTypeBinBz2, config.ArchiveTypeBinXz:
-				CheckFileHash(t, filepath.Join(extracted, tv.prefix, tv.name), "3f212a63b283e660406da7b022b52be26ea74a893c41ce093b00b2e5b0b36d5c")
+				THCheckFileHash(t, filepath.Join(extracted, tv.name), "3f212a63b283e660406da7b022b52be26ea74a893c41ce093b00b2e5b0b36d5c")
 			case config.ArchiveTypeTarGz, config.ArchiveTypeTarBz2, config.ArchiveTypeTarXz:
 				for fname, hash := range files {
-					CheckFileHash(t, filepath.Join(extracted, tv.prefix, fname), hash)
+					THCheckFileHash(t, filepath.Join(extracted, tv.prefix, fname), hash)
 				}
 			}
 
@@ -359,14 +371,12 @@ func TestExtractAndLinkTool(t *testing.T) {
 			switch tv.archiveType {
 			case config.ArchiveTypeBin, config.ArchiveTypeBinGz, config.ArchiveTypeBinBz2, config.ArchiveTypeBinXz:
 				link := filepath.Join(tempDir, "_links", tv.name)
+				log.Printf("%s", extracted)
 				err = CreateToolSymlinks(extracted, map[string]string{link: "$bin"})
 				if err != nil {
 					t.Fatalf("error: %s", err)
 				}
-				_, err := os.Stat(link)
-				if err != nil {
-					t.Fatalf("error: %s", err)
-				}
+				THValidateToolLink(t, link)
 			case config.ArchiveTypeTarGz, config.ArchiveTypeTarBz2, config.ArchiveTypeTarXz:
 				linksWithPrefix := map[string]string{}
 				for link, target := range links {
@@ -379,10 +389,7 @@ func TestExtractAndLinkTool(t *testing.T) {
 				}
 
 				for link := range linksWithPrefix {
-					_, err := os.Stat(link)
-					if err != nil {
-						t.Fatalf("error: %s", err)
-					}
+					THValidateToolLink(t, link)
 				}
 			}
 		})
