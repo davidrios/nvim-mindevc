@@ -523,8 +523,18 @@ func DownloadAndExtractLocalTools(cacheDir string) error {
 		return err
 	}
 
-	_, err = ExtractTool("zig", config.ZigTool.Archives[arch].Type, arch, locDownloaded["zig"])
+	extractedTo, err := ExtractTool("zig", config.ZigTool.Archives[arch].Type, arch, locDownloaded["zig"])
 	if err != nil {
+		return err
+	}
+
+	cacheDir, err = config.ExpandHome(cacheDir)
+	if err != nil {
+		return err
+	}
+	if err = CreateToolSymlinks(extractedTo, map[string]string{
+		filepath.Join(cacheDir, "bin", "zig"): config.ZigTool.Archives[arch].Links["/usr/local/bin/zig"],
+	}); err != nil {
 		return err
 	}
 
