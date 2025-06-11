@@ -381,7 +381,7 @@ func DownloadTools(
 				if err != nil {
 					return nil, err
 				}
-				if toolName == "nvim-mindevc" || toolName == "zig" {
+				if toolName == "nvim-mindevc" {
 					fname, err = ExtractTool(toolName, archive.Type, arch, fname)
 					if err != nil {
 						return nil, err
