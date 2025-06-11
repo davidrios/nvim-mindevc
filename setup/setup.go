@@ -120,6 +120,22 @@ func Setup(myConfig config.ConfigViper, devcontainer config.Devcontainer, useSel
 		return err
 	}
 
+	file, err = os.CreateTemp("", "")
+	if err != nil {
+		return fmt.Errorf("error opening temp file: %w", err)
+	}
+	defer os.Remove(file.Name())
+	file.Close()
+
+	err = DownloadFileHttp("https://curl.se/ca/cacert.pem", file.Name())
+	if err != nil {
+		return fmt.Errorf("error downloading cacerts: %w", err)
+	}
+	err = composeFile.CpToService(serviceName, file.Name(), filepath.Join(myConfig.Config.Remote.Workdir, "cacert.pem"))
+	if err != nil {
+		return err
+	}
+
 	url, err := myConfig.Config.GetConfigURI()
 	if err != nil {
 		return err

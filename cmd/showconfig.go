@@ -41,7 +41,7 @@ var showConfigCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(showConfigCmd)
+	RootCmd.AddCommand(showConfigCmd)
 
 	showConfigCmd.Flags().StringVarP(
 		&outputConfigFile,

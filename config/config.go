@@ -211,8 +211,29 @@ func LoadConfig(loadConfigFile string) (ConfigViper, error) {
 				},
 			},
 		},
+		"zig": {
+			Source: ToolSourceArchive,
+			Archives: map[ConfigToolArch]ConfigToolArchive{
+				ToolArch_x86_64: {
+					Url:  "https://ziglang.org/download/0.14.1/zig-x86_64-linux-0.14.1.tar.xz",
+					Hash: "24aeeec8af16c381934a6cd7d95c807a8cb2cf7df9fa40d359aa884195c4716c",
+					Type: ArchiveTypeTarXz,
+					Links: map[string]string{
+						"/usr/local/bin/zig": "zig-x86_64-linux-0.14.1/zig",
+					},
+				},
+				ToolArch_aarch64: {
+					Url:  "https://ziglang.org/download/0.14.1/zig-aarch64-linux-0.14.1.tar.xz",
+					Hash: "f7a654acc967864f7a050ddacfaa778c7504a0eca8d2b678839c21eea47c992b",
+					Type: ArchiveTypeTarXz,
+					Links: map[string]string{
+						"/usr/local/bin/zig": "zig-aarch64-linux-0.14.1/zig",
+					},
+				},
+			},
+		},
 	})
-	configViperViper.SetDefault("install_tools", []string{"fd", "ripgrep", "gosu", "curl"})
+	configViperViper.SetDefault("install_tools", []string{"fd", "ripgrep", "gosu", "curl", "zig"})
 	configViperViper.SetDefault("neovim.config_uri", "file://~/.config/nvim")
 	configViperViper.SetDefault("remote.workdir", "/opt/nvim-mindevc")
 	configViperViper.SetDefault("cache_dir", "~/.cache/nvim-mindevc")

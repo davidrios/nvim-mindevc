@@ -20,5 +20,5 @@ var remoteSetupCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(remoteSetupCmd)
+	RootCmd.AddCommand(remoteSetupCmd)
 }

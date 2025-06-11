@@ -299,6 +299,7 @@ func ExtractTool(
 			}
 
 			if archiveType.IsTar() {
+				slog.Debug("extracting tar")
 				err = extractTar(toolFileReader, toolDestDir)
 				if err != nil {
 					return "", fmt.Errorf("failed to extract tar: %w", err)
@@ -366,12 +367,14 @@ func DownloadTools(
 				if err != nil {
 					return nil, err
 				}
-				if toolName == "nvim-mindevc" {
+				if toolName == "nvim-mindevc" || toolName == "zig" {
 					fname, err = ExtractTool(toolName, archive.Type, arch, fname)
 					if err != nil {
 						return nil, err
 					}
-					fname = filepath.Join(fname, toolName)
+					if toolName == "nvim-mindevc" {
+						fname = filepath.Join(fname, toolName)
+					}
 				}
 				paths[toolName] = fname
 

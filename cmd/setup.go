@@ -35,7 +35,7 @@ var setupCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(setupCmd)
+	RootCmd.AddCommand(setupCmd)
 
 	setupCmd.Flags().BoolVarP(
 		&useSelfBinary,

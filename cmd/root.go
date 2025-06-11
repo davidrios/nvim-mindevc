@@ -1,26 +1,19 @@
 package cmd
 
 import (
-	"fmt"
 	"log"
 	"log/slog"
 	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 
 	"github.com/davidrios/nvim-mindevc/config"
 )
 
-var rootCmd = &cobra.Command{
+var RootCmd = &cobra.Command{
 	Use:   "nvim-mindevc",
 	Short: "Setup neovim inside devcontainer.",
-}
-
-func Execute() {
-	if err := rootCmd.Execute(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
 }
 
 var cmdConfig config.ConfigViper
@@ -31,25 +24,32 @@ var verbose bool
 func init() {
 	cobra.OnInitialize(initConfig)
 
-	rootCmd.PersistentFlags().BoolVarP(
-		&verbose,
-		"verbose", "v",
-		false,
-		"load settings from config file")
+	var subcommand string
+	if len(os.Args) > 1 {
+		subcommand = filepath.Base(os.Args[1])
+	}
 
-	rootCmd.PersistentFlags().StringVarP(
-		&configFile,
-		"config", "c",
-		"",
-		"load settings from config file")
+	if subcommand != "git" {
+		RootCmd.PersistentFlags().BoolVarP(
+			&verbose,
+			"verbose", "v",
+			false,
+			"show debug messages")
 
-	rootCmd.PersistentFlags().StringVarP(
-		&devcontainerFile,
-		"devcontainer", "d",
-		"",
-		"load devcontainer spec from this file")
+		RootCmd.PersistentFlags().StringVarP(
+			&configFile,
+			"config", "c",
+			"",
+			"load settings from config file")
 
-	// GlobalConfig.RuntimeViper.BindPFlag("port", rootCmd.PersistentFlags().Lookup("port"))
+		RootCmd.PersistentFlags().StringVarP(
+			&devcontainerFile,
+			"devcontainer", "d",
+			"",
+			"load devcontainer spec from this file")
+
+		// GlobalConfig.RuntimeViper.BindPFlag("port", rootCmd.PersistentFlags().Lookup("port"))
+	}
 }
 
 func initConfig() {
