@@ -72,6 +72,13 @@ func (archiveType *ConfigToolArchiveType) IsTar() bool {
 	return archiveTypeVal == ArchiveTypeTarGz || archiveTypeVal == ArchiveTypeTarBz2 || archiveTypeVal == ArchiveTypeTarXz
 }
 
+func (archiveType *ConfigToolArchiveType) IsGBXZCompressed() bool {
+	archiveTypeVal := *archiveType
+	return archiveTypeVal == ArchiveTypeTarGz || archiveTypeVal == ArchiveTypeTarBz2 ||
+		archiveTypeVal == ArchiveTypeTarXz || archiveTypeVal == ArchiveTypeBinGz ||
+		archiveTypeVal == ArchiveTypeBinBz2 || archiveTypeVal == ArchiveTypeBinXz
+}
+
 type ConfigToolArchive struct {
 	Url   string
 	Hash  string

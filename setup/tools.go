@@ -256,54 +256,68 @@ func ExtractTool(
 
 		var toolFileReader io.Reader = toolFile
 
+		if archiveType.IsGBXZCompressed() {
+			uncFile := fname + ".unc"
+
+			if _, err := os.Stat(uncFile); err != nil {
+				err = nil
+				switch archiveType {
+				case config.ArchiveTypeTarGz, config.ArchiveTypeBinGz:
+					toolFileReader, err = gzip.NewReader(toolFile)
+				case config.ArchiveTypeTarBz2, config.ArchiveTypeBinBz2:
+					toolFileReader = bzip2.NewReader(toolFile)
+				case config.ArchiveTypeTarXz, config.ArchiveTypeBinXz:
+					toolFileReader, err = xz.NewReader(toolFile)
+				}
+
+				if err != nil {
+					return "", fmt.Errorf("error extracting: %w", err)
+				}
+
+				uncTmp, err := os.Create(uncFile + ".tmp")
+
+				if err != nil {
+					return "", err
+				}
+
+				if _, err := io.Copy(uncTmp, toolFileReader); err != nil {
+					uncTmp.Close()
+					return "", err
+				}
+				uncTmp.Close()
+
+				err = os.Rename(uncFile+".tmp", uncFile)
+				if err != nil {
+					return "", err
+				}
+			}
+
+			toolFile, err = os.Open(uncFile)
+			if err != nil {
+				return "", err
+			}
+			defer toolFile.Close()
+
+			toolFileReader = toolFile
+		}
+
 		switch archiveType {
 		case config.ArchiveTypeBin, config.ArchiveTypeBinGz, config.ArchiveTypeBinBz2, config.ArchiveTypeBinXz:
-			destFile, err := os.OpenFile(
-				filepath.Join(toolDestDir, toolName),
-				os.O_CREATE|os.O_RDWR|os.O_TRUNC,
-				os.FileMode(0o755))
+			destFile, err := os.Create(filepath.Join(toolDestDir, toolName))
 			if err != nil {
 				return "", fmt.Errorf("error writing tool file: %w", err)
 			}
 			defer destFile.Close()
-
-			switch archiveType {
-			case config.ArchiveTypeBinGz:
-				toolFileReader, err = gzip.NewReader(toolFile)
-			case config.ArchiveTypeBinBz2:
-				toolFileReader = bzip2.NewReader(toolFile)
-			case config.ArchiveTypeBinXz:
-				toolFileReader, err = xz.NewReader(toolFile)
-			}
-
-			if err != nil {
-				return "", fmt.Errorf("error extracting: %w", err)
-			}
 
 			if _, err := io.Copy(destFile, toolFileReader); err != nil {
 				return "", fmt.Errorf("error writing tool file: %w", err)
 			}
 
 		case config.ArchiveTypeTarGz, config.ArchiveTypeTarBz2, config.ArchiveTypeTarXz:
-			switch archiveType {
-			case config.ArchiveTypeTarGz:
-				toolFileReader, err = gzip.NewReader(toolFile)
-			case config.ArchiveTypeTarBz2:
-				toolFileReader = bzip2.NewReader(toolFile)
-			case config.ArchiveTypeTarXz:
-				toolFileReader, err = xz.NewReader(toolFile)
-			}
-
+			slog.Debug("extracting tar")
+			err = extractTar(toolFileReader, toolDestDir)
 			if err != nil {
-				return "", fmt.Errorf("error extracting: %w", err)
-			}
-
-			if archiveType.IsTar() {
-				slog.Debug("extracting tar")
-				err = extractTar(toolFileReader, toolDestDir)
-				if err != nil {
-					return "", fmt.Errorf("failed to extract tar: %w", err)
-				}
+				return "", fmt.Errorf("failed to extract tar: %w", err)
 			}
 		}
 	}
