@@ -345,11 +345,6 @@ func DownloadTools(
 ) (map[string]string, error) {
 	slog.Debug("downloading tools")
 
-	cacheDir, err := config.ExpandHome(cacheDir)
-	if err != nil {
-		return nil, err
-	}
-
 	downloadDir, err := GetDownloadsDir(cacheDir)
 	if err != nil {
 		return nil, fmt.Errorf("error creating cache dir: %w", err)
@@ -528,10 +523,6 @@ func DownloadAndExtractLocalTools(cacheDir string) error {
 		return err
 	}
 
-	cacheDir, err = config.ExpandHome(cacheDir)
-	if err != nil {
-		return err
-	}
 	if err = CreateToolSymlinks(extractedTo, map[string]string{
 		filepath.Join(cacheDir, "bin", "zig"): config.ZigTool.Archives[arch].Links["/usr/local/bin/zig"],
 	}); err != nil {

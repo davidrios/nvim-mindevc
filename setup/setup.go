@@ -48,7 +48,12 @@ func Setup(myConfig config.ConfigViper, devcontainer config.Devcontainer, useSel
 
 	withNvimMindevcTools := config.WithNvimMindevcTool(myConfig.Config)
 
-	downloaded, err := DownloadTools(myConfig.Config.CacheDir,
+	cacheDir, err := config.ExpandHome(myConfig.Config.CacheDir)
+	if err != nil {
+		return err
+	}
+
+	downloaded, err := DownloadTools(cacheDir,
 		config.ConfigToolArch(arch),
 		withNvimMindevcTools.InstallTools,
 		withNvimMindevcTools.Tools,
@@ -57,7 +62,7 @@ func Setup(myConfig config.ConfigViper, devcontainer config.Devcontainer, useSel
 		return err
 	}
 
-	if err := DownloadAndExtractLocalTools(myConfig.Config.CacheDir); err != nil {
+	if err := DownloadAndExtractLocalTools(cacheDir); err != nil {
 		return err
 	}
 

@@ -96,6 +96,7 @@ type ConfigTools map[string]ConfigTool
 type Config struct {
 	Neovim struct {
 		ConfigURI string `mapstructure:"config_uri"`
+		Tag       string
 	}
 	InstallTools     []string `mapstructure:"install_tools"`
 	DevcontainerFile string   `mapstructure:"devcontainer_file"`
@@ -244,6 +245,7 @@ func LoadConfig(loadConfigFile string) (ConfigViper, error) {
 	})
 	configViperViper.SetDefault("install_tools", []string{"fd", "ripgrep", "gosu", "curl", "zig"})
 	configViperViper.SetDefault("neovim.config_uri", "file://~/.config/nvim")
+	configViperViper.SetDefault("neovim.tag", "nightly")
 	configViperViper.SetDefault("remote.workdir", "/opt/nvim-mindevc")
 	configViperViper.SetDefault("cache_dir", "~/.cache/nvim-mindevc")
 
