@@ -337,7 +337,7 @@ func TestExtractAndLinkTool(t *testing.T) {
 				t.Fatalf("unexpected error: %s", err)
 			}
 
-			extracted, err := ExtractTool(tv.name, tv.archiveType, downloadFname)
+			extracted, err := ExtractTool(tv.name, tv.archiveType, "", downloadFname)
 			if err != nil {
 				t.Fatalf("unexpected error: %s", err)
 			}

@@ -218,13 +218,14 @@ func CreateToolSymlinks(extractedTo string, symlinks map[string]string) error {
 func ExtractTool(
 	toolName string,
 	archiveType config.ConfigToolArchiveType,
+	arch config.ConfigToolArch,
 	fname string,
 ) (string, error) {
 	if !archiveType.IsValid() {
 		return "", fmt.Errorf("unknown archive type")
 	}
 
-	toolDestDir := filepath.Join(filepath.Dir(fname), "..", toolName)
+	toolDestDir := filepath.Join(filepath.Dir(fname), "..", string(arch), toolName)
 	if err := os.MkdirAll(toolDestDir, 0755); err != nil {
 		return "", fmt.Errorf("failed to create extraction directory: %w", err)
 	}
@@ -354,6 +355,13 @@ func DownloadTools(
 				fname, err := DownloadToolHttp(downloadDir, archive.Url, parsedUrl, archive.Hash)
 				if err != nil {
 					return nil, err
+				}
+				if toolName == "nvim-mindevc" {
+					fname, err = ExtractTool(toolName, archive.Type, arch, fname)
+					if err != nil {
+						return nil, err
+					}
+					fname = filepath.Join(fname, toolName)
 				}
 				paths = append(paths, fname)
 

@@ -93,7 +93,6 @@ func (composeFile *ComposeFile) Exec(serviceName string, execParams ExecParams) 
 	cmdArgs = append(cmdArgs, serviceName)
 	cmdArgs = append(cmdArgs, execParams.Args...)
 	cmd := exec.Command("docker", cmdArgs...)
-	// cmd.Args = cmdArgs
 	slog.Debug("cmdArgs", "v", cmd.Args)
 	cmd.Dir = filepath.Dir(composeFile.FilePath)
 	output, err := cmd.Output()
@@ -104,6 +103,21 @@ func (composeFile *ComposeFile) Exec(serviceName string, execParams ExecParams) 
 		return "", fmt.Errorf("error executing docker compose: %w", err)
 	}
 	return string(output[:]), nil
+}
+
+func (composeFile *ComposeFile) CpToService(serviceName string, src string, dest string) error {
+	cmdArgs := []string{"compose", "cp", src, fmt.Sprintf("%s:%s", serviceName, dest)}
+	cmd := exec.Command("docker", cmdArgs...)
+	slog.Debug("cmdArgs", "v", cmd.Args)
+	cmd.Dir = filepath.Dir(composeFile.FilePath)
+	_, err := cmd.Output()
+	if err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			slog.Debug("cmd error", "stderr", exitErr.Stderr)
+		}
+		return fmt.Errorf("error executing docker compose: %w", err)
+	}
+	return nil
 }
 
 func LoadComposeFile(devcontainer config.Devcontainer) (ComposeFile, error) {
