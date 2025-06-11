@@ -188,8 +188,31 @@ func LoadConfig(loadConfigFile string) (ConfigViper, error) {
 				},
 			},
 		},
+		"curl": {
+			Source: ToolSourceArchive,
+			Archives: map[ConfigToolArch]ConfigToolArchive{
+				ToolArch_x86_64: {
+					Url:  "https://github.com/stunnel/static-curl/releases/download/8.14.1/curl-linux-x86_64-musl-8.14.1.tar.xz",
+					Hash: "0b4622d9df4fd282b5a2d222e4e0146fc409053ee15ee1979784f6c8a56cf573",
+					Type: ArchiveTypeTarXz,
+					Links: map[string]string{
+						"/usr/local/bin/curl":  "curl",
+						"/usr/local/bin/trurl": "trurl",
+					},
+				},
+				ToolArch_aarch64: {
+					Url:  "https://github.com/stunnel/static-curl/releases/download/8.14.1/curl-linux-aarch64-musl-8.14.1.tar.xz",
+					Hash: "e0fecb5ecaba101b4b560f1035835770e7d1c151416ee84e18c813ba32b9d1dd",
+					Type: ArchiveTypeTarXz,
+					Links: map[string]string{
+						"/usr/local/bin/curl":  "curl",
+						"/usr/local/bin/trurl": "trurl",
+					},
+				},
+			},
+		},
 	})
-	configViperViper.SetDefault("install_tools", []string{"fd", "ripgrep", "gosu"})
+	configViperViper.SetDefault("install_tools", []string{"fd", "ripgrep", "gosu", "curl"})
 	configViperViper.SetDefault("neovim.config_uri", "file://~/.config/nvim")
 	configViperViper.SetDefault("remote.workdir", "/opt/nvim-mindevc")
 	configViperViper.SetDefault("cache_dir", "~/.cache/nvim-mindevc")
