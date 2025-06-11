@@ -13,6 +13,10 @@ import (
 
 var cloneFilter string
 var cloneBranch string
+var cloneOrigin string
+var cloneProgress bool
+var cloneConfig string
+var cloneRecurseSubmodules bool
 
 var gitCloneCmd = &cobra.Command{
 	Use:  "clone <repository> [<directory>]",
@@ -29,11 +33,16 @@ var gitCloneCmd = &cobra.Command{
 
 		options := git.CloneOptions{
 			URL:      args[0],
-			Progress: os.Stdout,
+			Progress: os.Stderr,
 		}
 		if cloneBranch != "" {
-			options.SingleBranch = true
 			options.ReferenceName = plumbing.ReferenceName(cloneBranch)
+		}
+		if cloneOrigin != "" {
+			options.RemoteName = cloneOrigin
+		}
+		if cloneRecurseSubmodules {
+			options.RecurseSubmodules = git.DefaultSubmoduleRecursionDepth
 		}
 		// if cloneFilter != "" {
 		// 	options.Filter = cloneFilter
@@ -59,9 +68,33 @@ func init() {
 		"",
 		"")
 
-	gitCloneCmd.Flags().StringVar(
+	gitCloneCmd.Flags().StringVarP(
 		&cloneBranch,
-		"branch",
+		"branch", "b",
 		"",
+		"")
+
+	gitCloneCmd.Flags().StringVar(
+		&cloneOrigin,
+		"origin",
+		"",
+		"")
+
+	gitCloneCmd.Flags().StringVarP(
+		&cloneConfig,
+		"config", "c",
+		"",
+		"")
+
+	gitCloneCmd.Flags().BoolVar(
+		&cloneProgress,
+		"progress",
+		false,
+		"")
+
+	gitCloneCmd.Flags().BoolVar(
+		&cloneRecurseSubmodules,
+		"recurse-submodules",
+		false,
 		"")
 }
