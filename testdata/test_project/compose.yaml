@@ -1,4 +1,20 @@
 services:
+  ubuntu-1604:
+    image: ubuntu:16.04
+    volumes:
+      - ./ubuntu-1604:/code
+    user: '1000:1000'
+    init: true
+    command: ['sleep', '365d']
+
+  ubuntu-1804:
+    image: ubuntu:18.04
+    volumes:
+      - ./ubuntu-1804:/code
+    user: '1000:1000'
+    init: true
+    command: ['sleep', '365d']
+
   ubuntu-2204:
     image: ubuntu:22.04
     volumes:
@@ -27,6 +43,22 @@ services:
     image: debian:bookworm
     volumes:
       - ./debian-bookworm:/code
+    user: '1000:1000'
+    init: true
+    command: ['sleep', '365d']
+
+  fedora:
+    image: fedora:latest
+    volumes:
+      - ./fedora:/code
+    user: '1000:1000'
+    init: true
+    command: ['sleep', '365d']
+
+  centos:
+    image: centos:5.11
+    volumes:
+      - ./centos:/code
     user: '1000:1000'
     init: true
     command: ['sleep', '365d']
