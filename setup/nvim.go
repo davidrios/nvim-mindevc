@@ -46,20 +46,23 @@ func DownloadAndExtractNeovim(workDir string, tag string, noCache bool) (string,
 	return filepath.Join(workDir, "neovim-"+tag), nil
 }
 
-func CompileAndPackNeovim(zigBin string, neovimSrc string, arch string, dataDir string) (string, error) {
-	slog.Debug("compiling neovim for", "arch", arch)
+func CompileNeovim(zigBin string, neovimSrc string) error {
+	nvimBin := filepath.Join(neovimSrc, "zig-out", "bin", "nvim")
 
-	if err := ReplaceInFile(filepath.Join(neovimSrc, "src/nvim/os/stdpaths.c"), "/usr/local/share/:/usr/share/", dataDir); err != nil {
-		return "", err
-	}
-
-	cmd := exec.Command(zigBin, "build", "nvim", fmt.Sprintf("-Dtarget=%s-linux-musl", arch))
+	cmd := exec.Command(nvimBin, "--clean", "-es", "-c", "call writefile(['hello'], '.imalive')")
 	cmd.Dir = neovimSrc
+	cmd.Env = append(cmd.Env, "VIM="+neovimSrc)
 	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("error compiling, %w, %s", err, cmd.Stderr)
+		slog.Info("compiling neovim, this may take a while...")
+		cmd = exec.Command(zigBin, "build", "nvim", "--release=fast")
+		cmd.Dir = neovimSrc
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("error compiling, %w, %s", err, cmd.Stderr)
+		}
+		slog.Info("done")
 	}
 
-	return "", fmt.Errorf("error")
+	return nil
 }
 
 func TestWithRedis(t *testing.T) {

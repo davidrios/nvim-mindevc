@@ -1,11 +1,8 @@
 package setup
 
 import (
-	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"strings"
 	"testing"
 )
 
@@ -30,18 +27,8 @@ func TestDownloadAndCompileNeovim(t *testing.T) {
 	}
 	zigBin := filepath.Join(tempDir, "bin", "zig")
 
-	cmd := exec.Command("uname", "-m")
-	output, err := cmd.Output()
-	if err != nil {
-		t.Fatalf("could not get current OS: %s", err)
-	}
-
-	arch := strings.TrimSpace(string(output))
-
-	archive, err := CompileAndPackNeovim(zigBin, neovimSrc, arch, filepath.Join(tempDir, "compiled")+"/")
+	err = CompileNeovim(zigBin, neovimSrc)
 	if err != nil {
 		t.Fatalf("unexpected error: %s", err)
 	}
-
-	fmt.Print("done ", archive)
 }
