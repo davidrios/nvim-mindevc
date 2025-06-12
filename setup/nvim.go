@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/davidrios/nvim-mindevc/utils"
 )
@@ -55,6 +56,23 @@ func CompileNeovim(zigBin string, neovimSrc string) error {
 	cmd.Env = append(cmd.Env, "VIM="+neovimSrc)
 	if err := cmd.Run(); err != nil {
 		slog.Info("compiling neovim, this may take a while...")
+
+		cmd := exec.Command("uname", "-m")
+		output, err := cmd.Output()
+		if err != nil {
+			if exitErr, ok := err.(*exec.ExitError); ok {
+				slog.Debug("cmd error", "stderr", exitErr.Stderr)
+			}
+			return fmt.Errorf("error executing: %w", err)
+		}
+		_arch := strings.TrimSpace(string(output))
+		if _, err = os.Stat(fmt.Sprintf("/lib/ld-musl-%s.so.1", _arch)); err == nil {
+			cmd = exec.Command("apk", "add", "gcc", "musl-dev")
+			if err := cmd.Run(); err != nil {
+				return fmt.Errorf("error compiling, %w, %s", err, cmd.Stderr)
+			}
+		}
+
 		cmd = exec.Command(zigBin, "build", "nvim", "--release=fast")
 		cmd.Dir = neovimSrc
 		if err := cmd.Run(); err != nil {
