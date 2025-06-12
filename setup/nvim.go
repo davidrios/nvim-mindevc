@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"testing"
 
 	"github.com/davidrios/nvim-mindevc/utils"
 )
@@ -69,7 +68,4 @@ func CompileNeovim(zigBin string, neovimSrc string) error {
 
 func TarNeovim(neovimSrc string, destFile string) error {
 	return nil
-}
-
-func TestWithRedis(t *testing.T) {
 }

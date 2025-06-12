@@ -37,7 +37,7 @@ func Setup(myConfig config.ConfigViper, devcontainer config.Devcontainer, useSel
 		return fmt.Errorf("compose file does not contain service '%s'", serviceName)
 	}
 
-	arch, err := composeFile.Exec(serviceName, docker.ExecParams{
+	_arch, err := composeFile.Exec(serviceName, docker.ExecParams{
 		Args: []string{"uname", "-m"},
 		User: "root",
 	})
@@ -45,8 +45,9 @@ func Setup(myConfig config.ConfigViper, devcontainer config.Devcontainer, useSel
 		return err
 	}
 
-	arch = strings.TrimSpace(arch)
-	slog.Debug("container arch", "v", arch)
+	_arch = strings.TrimSpace(_arch)
+	slog.Debug("container arch", "v", _arch)
+	arch := config.ConfigToolArch(_arch)
 
 	withNvimMindevcTools := config.WithNvimMindevcTool(myConfig.Config)
 
@@ -56,15 +57,11 @@ func Setup(myConfig config.ConfigViper, devcontainer config.Devcontainer, useSel
 	}
 
 	downloaded, err := DownloadTools(cacheDir,
-		config.ConfigToolArch(arch),
+		arch,
 		withNvimMindevcTools.InstallTools,
 		withNvimMindevcTools.Tools,
 	)
 	if err != nil {
-		return err
-	}
-
-	if err := DownloadAndExtractLocalTools(cacheDir); err != nil {
 		return err
 	}
 
@@ -77,10 +74,13 @@ func Setup(myConfig config.ConfigViper, devcontainer config.Devcontainer, useSel
 		return err
 	}
 
-	for _, downloadedFile := range downloaded {
+	for toolName, downloadedFile := range downloaded {
 		err = composeFile.CpToService(serviceName, downloadedFile, filepath.Join(uploadDir, filepath.Base(downloadedFile)))
 		if err != nil {
 			return err
+		}
+		if uncFile, _ := UncompressTool(myConfig.Config.Tools[toolName].Archives[arch].Type, downloadedFile); uncFile != "" {
+			_ = composeFile.CpToService(serviceName, uncFile, filepath.Join(uploadDir, filepath.Base(uncFile)))
 		}
 		slog.Debug("copied tool to remote", "file", downloadedFile)
 	}
@@ -95,7 +95,7 @@ func Setup(myConfig config.ConfigViper, devcontainer config.Devcontainer, useSel
 		}
 
 		osArch := strings.TrimSpace(string(output))
-		if osArch == fmt.Sprintf("Linux %s", arch) {
+		if osArch == fmt.Sprintf("Linux %s", _arch) {
 			myPath, err := os.Executable()
 			if err != nil {
 				return fmt.Errorf("could not get current binary: %w", err)
@@ -154,6 +154,7 @@ func Setup(myConfig config.ConfigViper, devcontainer config.Devcontainer, useSel
 
 	slog.Debug("got URL", "url", url, "scheme", url.Scheme)
 
+	slog.Info("running remote setup, this might take a while...")
 	output, err := composeFile.Exec(serviceName, docker.ExecParams{
 		Args: []string{remoteBinary, "-v", "-c", remoteConfig, "remote-setup"},
 		User: "root",
@@ -176,11 +177,12 @@ func RemoteSetup(myConfig config.ConfigViper) error {
 		return fmt.Errorf("error executing: %w", err)
 	}
 
-	arch := strings.TrimSpace(string(output))
+	_arch := strings.TrimSpace(string(output))
+	arch := config.ConfigToolArch(_arch)
 	slog.Debug("container arch", "v", arch)
 
 	downloaded, err := DownloadTools(myConfig.Config.Remote.Workdir,
-		config.ConfigToolArch(arch),
+		arch,
 		myConfig.Config.InstallTools,
 		myConfig.Config.Tools,
 	)
@@ -189,7 +191,7 @@ func RemoteSetup(myConfig config.ConfigViper) error {
 	}
 
 	extracted, err := ExtractTools(
-		config.ConfigToolArch(arch),
+		arch,
 		myConfig.Config.InstallTools,
 		myConfig.Config.Tools,
 		downloaded,
@@ -199,7 +201,7 @@ func RemoteSetup(myConfig config.ConfigViper) error {
 	}
 
 	err = LinkTools(
-		config.ConfigToolArch(arch),
+		arch,
 		myConfig.Config.InstallTools,
 		myConfig.Config.Tools,
 		extracted,
@@ -212,7 +214,6 @@ func RemoteSetup(myConfig config.ConfigViper) error {
 	if err := os.MkdirAll(filepath.Dir(caFile), 0o755); err != nil {
 		return err
 	}
-
 	if _, err := os.Stat(caFile); err != nil {
 		fp, err := os.Create(caFile)
 		if err != nil {
@@ -229,6 +230,40 @@ func RemoteSetup(myConfig config.ConfigViper) error {
 		if _, err := io.Copy(fp, sfp); err != nil {
 			return err
 		}
+	}
+
+	toolsDir := filepath.Join(myConfig.Config.Remote.Workdir, "tools", _arch)
+
+	neovimDir := filepath.Join(myConfig.Config.Remote.Workdir, "neovim")
+	if err := os.MkdirAll(neovimDir, 0o755); err != nil {
+		return err
+	}
+
+	neovimSrc, err := DownloadAndExtractNeovim(neovimDir, "nightly", false)
+	if err != nil {
+		return err
+	}
+
+	zigBin := filepath.Join(toolsDir, "zig", config.ZigTool.Archives[arch].Links["/usr/local/bin/zig"])
+
+	err = CompileNeovim(zigBin, neovimSrc)
+	if err != nil {
+		return err
+	}
+
+	nvimRun := fmt.Sprintf(`#!/bin/sh
+VIM="%s" "%s" "$@"`, neovimSrc, filepath.Join(neovimSrc, "zig-out", "bin", "nvim"))
+	fp, err := os.Create(myConfig.Config.Neovim.Runscript)
+	if err != nil {
+		return err
+	}
+	defer fp.Close()
+	_, err = fp.WriteString(nvimRun)
+	if err != nil {
+		return err
+	}
+	if err := os.Chmod(myConfig.Config.Neovim.Runscript, 0o755); err != nil {
+		return err
 	}
 
 	return nil
