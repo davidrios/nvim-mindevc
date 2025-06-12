@@ -1,15 +1,12 @@
 package setup
 
 import (
-	"archive/tar"
-	"archive/zip"
 	"compress/bzip2"
 	"compress/gzip"
 	"crypto/sha256"
 	"fmt"
 	"io"
 	"log/slog"
-	"net/http"
 	"net/url"
 	"os"
 	"os/exec"
@@ -19,35 +16,8 @@ import (
 	"github.com/ulikunitz/xz"
 
 	"github.com/davidrios/nvim-mindevc/config"
+	"github.com/davidrios/nvim-mindevc/utils"
 )
-
-func DownloadFileHttp(rawUrl string, saveTo string) error {
-	resp, err := http.Get(rawUrl)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("bad status: %s", resp.Status)
-	}
-
-	out, err := os.Create(saveTo)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
-
-	read, err := io.Copy(out, resp.Body)
-	if err != nil {
-		return err
-	}
-	if read == 0 {
-		return fmt.Errorf("got empty file")
-	}
-
-	return nil
-}
 
 func DownloadToolHttp(downloadDir string, rawUrl string, parsedUrl *url.URL, expectedHash string) (string, error) {
 	cachedFilename := filepath.Join(downloadDir, expectedHash)
@@ -75,7 +45,7 @@ func DownloadToolHttp(downloadDir string, rawUrl string, parsedUrl *url.URL, exp
 	}
 
 	tmpName := cachedFilename + ".tmp"
-	err := DownloadFileHttp(rawUrl, tmpName)
+	err := utils.DownloadFileHttp(rawUrl, tmpName)
 	if err != nil {
 		return "", err
 	}
@@ -102,95 +72,6 @@ func DownloadToolHttp(downloadDir string, rawUrl string, parsedUrl *url.URL, exp
 	}
 
 	return cachedFilename, nil
-}
-
-func extractTar(r io.Reader, dest string) error {
-	tr := tar.NewReader(r)
-	for {
-		header, err := tr.Next()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return err
-		}
-
-		target := filepath.Join(dest, header.Name)
-
-		switch header.Typeflag {
-		case tar.TypeDir:
-			if err := os.MkdirAll(target, 0755); err != nil {
-				return err
-			}
-		case tar.TypeReg:
-			if err := os.MkdirAll(filepath.Dir(target), 0755); err != nil {
-				return err
-			}
-
-			f, err := os.OpenFile(target, os.O_CREATE|os.O_RDWR|os.O_TRUNC, os.FileMode(header.Mode))
-			if err != nil {
-				return err
-			}
-			defer f.Close()
-
-			if _, err := io.Copy(f, tr); err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
-}
-
-func extractZipFile(f *zip.File, destDir string) error {
-	rc, err := f.Open()
-	if err != nil {
-		return err
-	}
-	defer rc.Close()
-
-	dest := filepath.Join(destDir, f.Name)
-
-	if f.FileInfo().IsDir() {
-		err = os.MkdirAll(dest, f.FileInfo().Mode())
-		if err != nil {
-			return err
-		}
-		return nil
-	}
-
-	if err := os.MkdirAll(filepath.Dir(dest), 0755); err != nil {
-		return err
-	}
-
-	outFile, err := os.OpenFile(dest, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.FileInfo().Mode())
-	if err != nil {
-		return err
-	}
-	defer outFile.Close()
-
-	_, err = io.Copy(outFile, rc)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func extractZip(src, destDir string) error {
-	r, err := zip.OpenReader(src)
-	if err != nil {
-		return err
-	}
-	defer r.Close()
-
-	for _, f := range r.File {
-		if err = extractZipFile(f, destDir); err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
 
 func CreateToolSymlinks(extractedTo string, symlinks map[string]string) error {
@@ -245,7 +126,7 @@ func ExtractTool(
 	var err error
 
 	if archiveType == config.ArchiveTypeZip {
-		err = extractZip(fname, toolDestDir)
+		err = utils.ExtractZip(fname, toolDestDir)
 		if err != nil {
 			return "", fmt.Errorf("could not extract zip: %w", err)
 		}
@@ -317,7 +198,7 @@ func ExtractTool(
 
 		case config.ArchiveTypeTarGz, config.ArchiveTypeTarBz2, config.ArchiveTypeTarXz:
 			slog.Debug("extracting tar")
-			err = extractTar(toolFileReader, toolDestDir)
+			err = utils.ExtractTar(toolFileReader, toolDestDir)
 			if err != nil {
 				return "", fmt.Errorf("failed to extract tar: %w", err)
 			}

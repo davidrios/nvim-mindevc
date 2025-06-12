@@ -8,6 +8,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"testing"
+
+	"github.com/davidrios/nvim-mindevc/utils"
 )
 
 func DownloadAndExtractNeovim(workDir string, tag string, noCache bool) (string, error) {
@@ -16,7 +18,7 @@ func DownloadAndExtractNeovim(workDir string, tag string, noCache bool) (string,
 	neovimSourceFile := filepath.Join(workDir, fmt.Sprintf("neovim-%s.tar.gz", tag))
 	if _, err := os.Stat(neovimSourceFile); err != nil || noCache {
 		tmpFile := neovimSourceFile + ".tmp"
-		err := DownloadFileHttp(fmt.Sprintf("https://github.com/neovim/neovim/archive/refs/tags/%s.tar.gz", tag), tmpFile)
+		err := utils.DownloadFileHttp(fmt.Sprintf("https://github.com/neovim/neovim/archive/refs/tags/%s.tar.gz", tag), tmpFile)
 		if err != nil {
 			return "", err
 		}
@@ -37,7 +39,7 @@ func DownloadAndExtractNeovim(workDir string, tag string, noCache bool) (string,
 		return "", err
 	}
 
-	err = extractTar(fileReader, workDir)
+	err = utils.ExtractTar(fileReader, workDir)
 	if err != nil {
 		return "", fmt.Errorf("failed to extract tar: %w", err)
 	}
@@ -62,6 +64,10 @@ func CompileNeovim(zigBin string, neovimSrc string) error {
 		slog.Info("done")
 	}
 
+	return nil
+}
+
+func TarNeovim(neovimSrc string, destFile string) error {
 	return nil
 }
 

@@ -4,7 +4,6 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -371,7 +370,6 @@ func TestExtractAndLinkTool(t *testing.T) {
 			switch tv.archiveType {
 			case config.ArchiveTypeBin, config.ArchiveTypeBinGz, config.ArchiveTypeBinBz2, config.ArchiveTypeBinXz:
 				link := filepath.Join(tempDir, "_links", tv.name)
-				log.Printf("%s", extracted)
 				err = CreateToolSymlinks(extracted, map[string]string{link: "$bin"})
 				if err != nil {
 					t.Fatalf("error: %s", err)

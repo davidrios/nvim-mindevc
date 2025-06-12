@@ -10,9 +10,11 @@ import (
 	"path/filepath"
 	"strings"
 
+	"gopkg.in/yaml.v3"
+
 	"github.com/davidrios/nvim-mindevc/config"
 	"github.com/davidrios/nvim-mindevc/docker"
-	"gopkg.in/yaml.v3"
+	"github.com/davidrios/nvim-mindevc/utils"
 )
 
 func Setup(myConfig config.ConfigViper, devcontainer config.Devcontainer, useSelfBinary bool) error {
@@ -136,7 +138,7 @@ func Setup(myConfig config.ConfigViper, devcontainer config.Devcontainer, useSel
 	defer os.Remove(file.Name())
 	file.Close()
 
-	err = DownloadFileHttp("https://curl.se/ca/cacert.pem", file.Name())
+	err = utils.DownloadFileHttp("https://curl.se/ca/cacert.pem", file.Name())
 	if err != nil {
 		return fmt.Errorf("error downloading cacerts: %w", err)
 	}
