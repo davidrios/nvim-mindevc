@@ -111,7 +111,7 @@ type Config struct {
 }
 
 func (config *Config) GetDevcontainerFilePath() string {
-	if config.DevcontainerFile[:2] == "./" {
+	if len(config.DevcontainerFile) >= 2 && config.DevcontainerFile[:2] == "./" {
 		return filepath.Join(filepath.Dir(config.FilePath), config.DevcontainerFile)
 	}
 	return config.DevcontainerFile
