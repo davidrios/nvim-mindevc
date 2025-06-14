@@ -12,6 +12,20 @@ import (
 	"github.com/davidrios/nvim-mindevc/utils"
 )
 
+func IsAlpine() (bool, error) {
+	cmd := exec.Command("uname", "-m")
+	output, err := cmd.Output()
+	if err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			slog.Debug("cmd error", "stderr", exitErr.Stderr)
+		}
+		return false, fmt.Errorf("error executing: %w", err)
+	}
+	_arch := strings.TrimSpace(string(output))
+	_, err = os.Stat(fmt.Sprintf("/lib/ld-musl-%s.so.1", _arch))
+	return err == nil, nil
+}
+
 func DownloadAndExtractNeovim(workDir string, tag string, noCache bool) (string, error) {
 	slog.Debug("downloading neovim", "tag", tag)
 
@@ -45,7 +59,33 @@ func DownloadAndExtractNeovim(workDir string, tag string, noCache bool) (string,
 	}
 
 	slog.Debug("downloaded and extracted")
-	return filepath.Join(workDir, "neovim-"+tag), nil
+	neovimSrc := filepath.Join(workDir, "neovim-"+tag)
+
+	isAlpine, err := IsAlpine()
+	if err != nil {
+		return "", err
+	}
+	if isAlpine {
+		main_c := filepath.Join(neovimSrc, "src/nvim/main.c")
+
+		if err = utils.ReplaceInFile(
+			main_c,
+			"main(int argc, char **argv)",
+			"main(int argc, char **argv, char **envp)",
+		); err != nil {
+			return "", err
+		}
+		if err = utils.ReplaceInFile(
+			main_c,
+			"argv0 = argv[0];",
+			"extern char **__environ; __environ = envp; argv0 = argv[0];",
+		); err != nil {
+			return "", err
+		}
+
+	}
+
+	return neovimSrc, nil
 }
 
 func CompileNeovim(zigBin string, neovimSrc string) error {
@@ -56,22 +96,6 @@ func CompileNeovim(zigBin string, neovimSrc string) error {
 	cmd.Env = append(cmd.Env, "VIM="+neovimSrc)
 	if err := cmd.Run(); err != nil {
 		slog.Info("compiling neovim, this may take a while...")
-
-		cmd := exec.Command("uname", "-m")
-		output, err := cmd.Output()
-		if err != nil {
-			if exitErr, ok := err.(*exec.ExitError); ok {
-				slog.Debug("cmd error", "stderr", exitErr.Stderr)
-			}
-			return fmt.Errorf("error executing: %w", err)
-		}
-		_arch := strings.TrimSpace(string(output))
-		if _, err = os.Stat(fmt.Sprintf("/lib/ld-musl-%s.so.1", _arch)); err == nil {
-			cmd = exec.Command("apk", "add", "gcc", "musl-dev")
-			if err := cmd.Run(); err != nil {
-				return fmt.Errorf("error compiling, %w, %s", err, cmd.Stderr)
-			}
-		}
 
 		cmd = exec.Command(zigBin, "build", "nvim", "--release=fast")
 		cmd.Dir = neovimSrc
