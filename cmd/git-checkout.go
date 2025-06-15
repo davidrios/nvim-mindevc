@@ -10,7 +10,7 @@ import (
 var gitCheckoutOptions git.CheckoutOptions
 
 var gitCheckoutCmd = &cobra.Command{
-	Use:  "checkout [<branch>]",
+	Use:  "checkout [<branch> | <commit>]",
 	Args: cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		slog.Debug("args", "a", args)

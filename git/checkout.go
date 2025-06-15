@@ -31,6 +31,13 @@ func Checkout(repoDir string, options CheckoutOptions) error {
 		return fmt.Errorf("worktree error %w", err)
 	}
 
+	if foundRev, err := r.ResolveRevision(plumbing.Revision(options.Branch)); err == nil {
+		err = tree.Checkout(&git.CheckoutOptions{Hash: *foundRev})
+		if err == nil || err == git.ErrUnstagedChanges {
+			return nil
+		}
+	}
+
 	refIter, err := r.References()
 	if err != nil {
 		return err
@@ -50,7 +57,7 @@ func Checkout(repoDir string, options CheckoutOptions) error {
 		return nil
 	})
 	if err == nil || foundRef == nil {
-		return fmt.Errorf("branch not found: %s", options.Branch)
+		return fmt.Errorf("branch or commit not found: %s", options.Branch)
 	}
 
 	gitCheckoutOptions := git.CheckoutOptions{
