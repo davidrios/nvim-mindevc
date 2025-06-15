@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var gitLogOptions git.GitLogOptions
+var gitLogOptions git.LogOptions
 
 var gitLogCmd = &cobra.Command{
 	Use: "log [<revision-range>]",

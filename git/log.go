@@ -11,7 +11,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/object"
 )
 
-type GitLogOptions struct {
+type LogOptions struct {
 	Pretty          string
 	Date            string
 	Color           string
@@ -122,7 +122,7 @@ func (f *PrettyFormatter) SprintFormat() string {
 var logPrettyFormatter = PrettyFormatter{
 	Format: FormatMap{
 		'H': nil, 'h': nil, 's': nil,
-		'c': map[rune]int{'s': 0}},
+		'c': map[rune]int{'s': 0, 'r': 0}},
 	ProcessOption: func(chars string, context any) (string, error) {
 		c, ok := context.(*object.Commit)
 		if !ok {
@@ -138,6 +138,8 @@ var logPrettyFormatter = PrettyFormatter{
 			return strings.TrimSpace(strings.SplitN(c.Message, "\n", 1)[0]), nil
 		case "cs":
 			return c.Author.When.Format("2006-01-02"), nil
+		case "cr":
+			return fmt.Sprintf("%d seconds ago", int(time.Since(c.Author.When).Seconds())), nil
 		default:
 			return "", fmt.Errorf("error")
 		}
@@ -145,7 +147,7 @@ var logPrettyFormatter = PrettyFormatter{
 	OptionStart: '%',
 }
 
-func FormatCommit(c *object.Commit, options *GitLogOptions) ([]string, error) {
+func FormatCommit(c *object.Commit, options *LogOptions) ([]string, error) {
 	if c == nil || options == nil {
 		return nil, fmt.Errorf("invalid nil parameters")
 	}
@@ -183,7 +185,7 @@ func FormatCommit(c *object.Commit, options *GitLogOptions) ([]string, error) {
 	return lines, nil
 }
 
-func PrintLog(repoDir string, revRange string, options GitLogOptions) error {
+func PrintLog(repoDir string, revRange string, options LogOptions) error {
 	revA := ""
 	revB := "HEAD"
 
