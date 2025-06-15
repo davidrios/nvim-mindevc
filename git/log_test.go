@@ -7,16 +7,16 @@ import (
 )
 
 var processor1 = PrettyFormatter{
-	format: FormatMap{'c': nil},
-	proc: func(chars string) (string, error) {
+	Format: FormatMap{'c': nil},
+	ProcessOption: func(chars string, context any) (string, error) {
 		return "world", nil
 	},
-	chr: '%',
+	OptionStart: '%',
 }
 
 var processor2 = PrettyFormatter{
-	format: FormatMap{'a': nil, 'b': nil},
-	proc: func(chars string) (string, error) {
+	Format: FormatMap{'a': nil, 'b': nil},
+	ProcessOption: func(chars string, context any) (string, error) {
 		switch chars {
 		case "a":
 			return "hello", nil
@@ -26,12 +26,12 @@ var processor2 = PrettyFormatter{
 			return fmt.Sprintf("<invalid:%s>", chars), nil
 		}
 	},
-	chr: '%',
+	OptionStart: '%',
 }
 
 var processor3 = PrettyFormatter{
-	format: FormatMap{'x': nil, 'b': map[rune]int{'r': 0, 'x': 0}},
-	proc: func(chars string) (string, error) {
+	Format: FormatMap{'x': nil, 'b': map[rune]int{'r': 0, 'x': 0}},
+	ProcessOption: func(chars string, context any) (string, error) {
 		switch chars {
 		case "x":
 			return "planet X", nil
@@ -43,7 +43,7 @@ var processor3 = PrettyFormatter{
 			return fmt.Sprintf("<invalid:%s>", chars), nil
 		}
 	},
-	chr: '%',
+	OptionStart: '%',
 }
 
 func TestPrettyFormat(t *testing.T) {
@@ -93,7 +93,7 @@ func TestPrettyFormat(t *testing.T) {
 			formatter: &processor1,
 			input:     "%bhello",
 			success:   false,
-			output:    "unrecognized option 'b'",
+			output:    "unrecognized format option 'b'",
 		},
 		{
 			formatter: &processor1,
@@ -135,7 +135,7 @@ func TestPrettyFormat(t *testing.T) {
 			formatter: &processor2,
 			input:     "x%%g mundo. world, %d",
 			success:   false,
-			output:    "unrecognized option 'd'",
+			output:    "unrecognized format option 'd'",
 		},
 		{
 			formatter: &processor3,
@@ -147,19 +147,19 @@ func TestPrettyFormat(t *testing.T) {
 			formatter: &processor3,
 			input:     "%x is nice, but %bz is better. If %bx, I don't know",
 			success:   false,
-			output:    "unrecognized param 'z' for option 'b'",
+			output:    "unrecognized param 'z' for format option 'b'",
 		},
 		{
 			formatter: &processor3,
 			input:     "%x is nice, but %b% is better",
 			success:   false,
-			output:    "unrecognized param '%' for option 'b'",
+			output:    "unrecognized param '%' for format option 'b'",
 		},
 	}
 
 	for _, tv := range testTable {
 		t.Run(fmt.Sprintf("%+v:%s", tv.formatter.SprintFormat(), tv.input), func(t *testing.T) {
-			res, err := tv.formatter.Format(tv.input)
+			res, err := tv.formatter.ApplyFormat(tv.input, nil)
 			if tv.success {
 				if err != nil {
 					t.Fatalf("unexpected error '%s'", err)

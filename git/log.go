@@ -23,58 +23,58 @@ type GitLogOptions struct {
 type FormatMap map[rune]map[rune]int
 
 type PrettyFormatter struct {
-	format FormatMap
-	proc   func(string) (string, error)
-	chr    rune
+	Format        FormatMap
+	ProcessOption func(string, any) (string, error)
+	OptionStart   rune
 }
 
-func (f *PrettyFormatter) Format(value string) ([]string, error) {
+func (f *PrettyFormatter) ApplyFormat(value string, context any) ([]string, error) {
 	isFmt := false
-	command := ""
+	option := ""
 	var current rune = 0
 	pieces := []string{}
 	last := 0
 	for idx, char := range value {
 		if !isFmt {
-			if char == f.chr {
+			if char == f.OptionStart {
 				isFmt = true
 			}
 			continue
 		}
 
-		if current == 0 && char == f.chr {
-			command = string(f.chr)
+		if current == 0 && char == f.OptionStart {
+			option = string(f.OptionStart)
 		} else {
 			if current == 0 {
-				next, ok := f.format[char]
+				next, ok := f.Format[char]
 				if !ok {
-					return nil, fmt.Errorf("unrecognized option '%c'", char)
+					return nil, fmt.Errorf("unrecognized format option '%c'", char)
 				}
 
 				current = char
-				command = command + string(char)
+				option = option + string(char)
 
 				if len(next) > 0 {
 					continue
 				}
 			} else {
-				_, ok := f.format[current][char]
+				_, ok := f.Format[current][char]
 				if !ok {
-					return nil, fmt.Errorf("unrecognized param '%c' for option '%c'", char, current)
+					return nil, fmt.Errorf("unrecognized param '%c' for format option '%c'", char, current)
 				}
 
-				command = command + string(char)
+				option = option + string(char)
 			}
 		}
 
 		if idx > 1 {
-			pieces = append(pieces, value[last:idx-len(command)])
+			pieces = append(pieces, value[last:idx-len(option)])
 		}
 
-		if rune(command[0]) == f.chr {
-			pieces = append(pieces, string(f.chr))
+		if rune(option[0]) == f.OptionStart {
+			pieces = append(pieces, string(f.OptionStart))
 		} else {
-			res, err := f.proc(command)
+			res, err := f.ProcessOption(option, context)
 			if err != nil {
 				return nil, err
 			}
@@ -84,7 +84,7 @@ func (f *PrettyFormatter) Format(value string) ([]string, error) {
 		last = idx + 1
 		isFmt = false
 		current = 0
-		command = ""
+		option = ""
 	}
 
 	if isFmt {
@@ -99,12 +99,12 @@ func (f *PrettyFormatter) Format(value string) ([]string, error) {
 }
 
 func (f *PrettyFormatter) SprintFormat() string {
-	if f.chr == rune(0) {
+	if f.OptionStart == rune(0) {
 		return ""
 	}
 
 	newVal := map[string]map[string]int{}
-	for k, v := range f.format {
+	for k, v := range f.Format {
 		if v == nil {
 			newVal[string(k)] = nil
 		} else {
@@ -120,9 +120,29 @@ func (f *PrettyFormatter) SprintFormat() string {
 }
 
 var logPrettyFormatter = PrettyFormatter{
-	format: nil,
-	proc:   nil,
-	chr:    '%',
+	Format: FormatMap{
+		'H': nil, 'h': nil, 's': nil,
+		'c': map[rune]int{'s': 0}},
+	ProcessOption: func(chars string, context any) (string, error) {
+		c, ok := context.(*object.Commit)
+		if !ok {
+			return "", fmt.Errorf("no commit")
+		}
+
+		switch chars {
+		case "h":
+			return c.Hash.String()[:7], nil
+		case "H":
+			return c.Hash.String(), nil
+		case "s":
+			return strings.TrimSpace(strings.SplitN(c.Message, "\n", 1)[0]), nil
+		case "cs":
+			return c.Author.When.Format("2006-01-02"), nil
+		default:
+			return "", fmt.Errorf("error")
+		}
+	},
+	OptionStart: '%',
 }
 
 func FormatCommit(c *object.Commit, options *GitLogOptions) ([]string, error) {
@@ -143,18 +163,20 @@ func FormatCommit(c *object.Commit, options *GitLogOptions) ([]string, error) {
 	}
 
 	if strings.Index(options.Pretty, "format:") == 0 {
-		formatted, err := logPrettyFormatter.Format(options.Pretty[:7])
+		formatted, err := logPrettyFormatter.ApplyFormat(options.Pretty[7:], c)
 		if err != nil {
 			return nil, err
 		}
 		lines = append(lines, strings.Join(formatted, ""))
 	} else {
 		lines = append(lines, fmt.Sprintf("commit %s", commitHash))
-		lines = append(lines, fmt.Sprintf("Author: %s <%s>", c.Author.Name, c.Author.Email))
-		lines = append(lines, fmt.Sprintf("Date:   %s", commitDate))
-		lines = append(lines, "")
+		lines = append(lines, fmt.Sprintf("\nAuthor: %s <%s>", c.Author.Name, c.Author.Email))
+		lines = append(lines, fmt.Sprintf("\nDate:   %s", commitDate))
+		lines = append(lines, "\n")
+		cntLines := 0
 		for line := range strings.Lines(c.Message) {
-			lines = append(lines, fmt.Sprintf("    %s", strings.TrimSpace(line)))
+			lines = append(lines, fmt.Sprintf("\n    %s", strings.TrimSpace(line)))
+			cntLines += 1
 		}
 	}
 
@@ -234,7 +256,7 @@ func PrintLog(repoDir string, revRange string, options GitLogOptions) error {
 		}
 
 		for _, line := range lines {
-			fmt.Println(line)
+			fmt.Print(line)
 		}
 
 		return nil
@@ -243,6 +265,7 @@ func PrintLog(repoDir string, revRange string, options GitLogOptions) error {
 	if err != nil && err.Error() != "stop iteration" {
 		return err
 	}
+	fmt.Println()
 
 	return nil
 }
