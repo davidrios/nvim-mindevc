@@ -136,7 +136,7 @@ var logPrettyFormatter = PrettyFormatter{
 		case "H":
 			return c.Hash.String(), nil
 		case "s":
-			return strings.TrimSpace(strings.SplitN(c.Message, "\n", 1)[0]), nil
+			return strings.TrimSpace(strings.SplitN(c.Message, "\n", 2)[0]), nil
 		case "cs":
 			return c.Author.When.Format("2006-01-02"), nil
 		case "cr":
