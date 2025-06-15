@@ -3,7 +3,7 @@ module github.com/davidrios/nvim-mindevc
 go 1.24.3
 
 require (
-	github.com/go-git/go-git/v5 v5.16.2
+	github.com/go-git/go-git/v5 v5.12.1-0.20250603224102-89fc507cd903
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/viper v1.20.1
 	github.com/ulikunitz/xz v0.5.12
@@ -44,3 +44,5 @@ require (
 	golang.org/x/text v0.26.0 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )
+
+replace github.com/go-git/go-git/v5 v5.12.1-0.20250603224102-89fc507cd903 => github.com/davidrios/go-git/v5 v5.0.0-20250615133205-4e390ac12d9e

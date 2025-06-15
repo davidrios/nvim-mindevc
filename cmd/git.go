@@ -8,7 +8,7 @@ import (
 
 var gitCmd = &cobra.Command{
 	Use:   "git",
-	Short: "Lightweight git implementation",
+	Short: "Minimal git implementation",
 }
 
 func init() {
