@@ -12,6 +12,7 @@ import (
 )
 
 type LogOptions struct {
+	Limit           int
 	Pretty          string
 	Date            string
 	Color           string
@@ -232,6 +233,11 @@ func PrintLog(repoDir string, revRange string, options LogOptions) error {
 		return fmt.Errorf("Error getting commit log: %v\n", err)
 	}
 
+	doneCount := 0
+	if options.Limit == 0 {
+		options.Limit = 0xffffff
+	}
+
 	printedFirst := false
 	err = cIter.ForEach(func(c *object.Commit) error {
 		if commitA != nil {
@@ -259,6 +265,11 @@ func PrintLog(repoDir string, revRange string, options LogOptions) error {
 
 		for _, line := range lines {
 			fmt.Print(line)
+		}
+
+		doneCount += 1
+		if doneCount > options.Limit-1 {
+			return fmt.Errorf("stop iteration")
 		}
 
 		return nil

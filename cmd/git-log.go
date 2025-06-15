@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"log/slog"
 
 	"github.com/davidrios/nvim-mindevc/git"
@@ -8,6 +9,7 @@ import (
 )
 
 var gitLogOptions git.LogOptions
+var limit = [10]bool{}
 
 var gitLogCmd = &cobra.Command{
 	Use: "log [<revision-range>]",
@@ -17,12 +19,27 @@ var gitLogCmd = &cobra.Command{
 		if len(args) > 0 {
 			revRange = args[0]
 		}
+		for idx, i := range limit {
+			if i {
+				gitLogOptions.Limit = idx + 1
+			}
+		}
+
 		return git.PrintLog(".", revRange, gitLogOptions)
 	},
 }
 
 func init() {
 	gitCmd.AddCommand(gitLogCmd)
+
+	for i := 1; i < 10; i++ {
+		// TODO: fix ugly hack
+		gitLogCmd.Flags().BoolVarP(
+			&limit[i-1],
+			fmt.Sprintf("limit%d", i), fmt.Sprintf("%d", i),
+			false, "",
+		)
+	}
 
 	gitLogCmd.Flags().StringVar(
 		&gitLogOptions.Pretty,
