@@ -15,6 +15,7 @@ func main() {
 		cmdToExecute = foundCmd
 		cmd.RootCmd.RemoveCommand(foundCmd)
 		cmdToExecute.Use = invocationName
+		// slog.Info("args", "a", os.Args)
 	}
 
 	if err := cmdToExecute.Execute(); err != nil {
