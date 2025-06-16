@@ -31,13 +31,6 @@ func Checkout(repoDir string, options CheckoutOptions) error {
 		return fmt.Errorf("worktree error %w", err)
 	}
 
-	if foundRev, err := r.ResolveRevision(plumbing.Revision(options.Branch)); err == nil {
-		err = tree.Checkout(&git.CheckoutOptions{Hash: *foundRev})
-		if err == nil || err == git.ErrUnstagedChanges {
-			return nil
-		}
-	}
-
 	refIter, err := r.References()
 	if err != nil {
 		return err
@@ -57,15 +50,32 @@ func Checkout(repoDir string, options CheckoutOptions) error {
 		return nil
 	})
 	if err == nil || foundRef == nil {
+		if foundRev, err := r.ResolveRevision(plumbing.Revision(options.Branch)); err == nil {
+			err = tree.Checkout(&git.CheckoutOptions{Hash: *foundRev, Keep: true})
+			if err == nil {
+				return nil
+			}
+		}
+
 		return fmt.Errorf("branch or commit not found: %s", options.Branch)
 	}
 
-	gitCheckoutOptions := git.CheckoutOptions{
-		Branch: foundRef.Name(),
+	if strings.Index(options.Branch, "refs/") != 0 &&
+		strings.Index(options.Branch, "tags/") != 0 &&
+		strings.Index(foundRef.Name().String(), "refs/heads/") != 0 {
+		err = tree.Checkout(&git.CheckoutOptions{
+			Branch: plumbing.ReferenceName("refs/heads/" + options.Branch),
+			Hash:   foundRef.Hash(),
+			Create: true,
+			Keep:   true,
+		})
+	} else {
+		err = tree.Checkout(&git.CheckoutOptions{
+			Branch: foundRef.Name(),
+			Keep:   true,
+		})
 	}
-
-	err = tree.Checkout(&gitCheckoutOptions)
-	if err != nil && err != git.ErrUnstagedChanges {
+	if err != nil {
 		return fmt.Errorf("error checking out %w", err)
 	}
 
