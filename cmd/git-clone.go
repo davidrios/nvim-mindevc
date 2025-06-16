@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	mygit "github.com/davidrios/nvim-mindevc/git"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/spf13/cobra"
@@ -49,7 +50,12 @@ var gitCloneCmd = &cobra.Command{
 		// }
 
 		slog.Info("cloning repository, please wait...", "target_dir", directory)
-		_, err := git.PlainClone(directory, false, &options)
+		r, err := git.PlainClone(directory, false, &options)
+		if err != nil {
+			return err
+		}
+
+		err = mygit.CreateRemoteHeads(directory, r)
 		if err != nil {
 			return err
 		}

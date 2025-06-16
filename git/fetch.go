@@ -38,5 +38,10 @@ func Fetch(repoDir string, options FetchOptions) error {
 		return err
 	}
 
+	err = CreateRemoteHeads(abs, r)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
