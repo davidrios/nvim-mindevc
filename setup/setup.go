@@ -244,7 +244,7 @@ func RemoteSetup(myConfig config.ConfigViper) error {
 		return err
 	}
 
-	zigBin := filepath.Join(toolsDir, "zig", config.ZigTool.Archives[arch].Links["/usr/local/bin/zig"])
+	zigBin := filepath.Join(toolsDir, "zig", config.ZigTool.Archives[arch].Links[config.DefaultZigLink])
 
 	err = CompileNeovim(zigBin, neovimSrc)
 	if err != nil {

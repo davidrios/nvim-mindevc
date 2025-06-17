@@ -129,6 +129,8 @@ type ConfigViper struct {
 const ConfigFileBaseName = "nvim-mindevc"
 const DefaultConfigFile = "." + ConfigFileBaseName + ".yaml"
 
+const DefaultZigLink = "/opt/nvim-mindevc/bin/zig"
+
 var ZigTool = ConfigTool{
 	Source: ToolSourceArchive,
 	Archives: map[ConfigToolArch]ConfigToolArchive{
@@ -137,7 +139,7 @@ var ZigTool = ConfigTool{
 			Hash: "24aeeec8af16c381934a6cd7d95c807a8cb2cf7df9fa40d359aa884195c4716c",
 			Type: ArchiveTypeTarXz,
 			Links: map[string]string{
-				"/usr/local/bin/zig": "zig-x86_64-linux-0.14.1/zig",
+				DefaultZigLink: "zig-x86_64-linux-0.14.1/zig",
 			},
 		},
 		ToolArch_aarch64: {
@@ -145,7 +147,7 @@ var ZigTool = ConfigTool{
 			Hash: "f7a654acc967864f7a050ddacfaa778c7504a0eca8d2b678839c21eea47c992b",
 			Type: ArchiveTypeTarXz,
 			Links: map[string]string{
-				"/usr/local/bin/zig": "zig-aarch64-linux-0.14.1/zig",
+				DefaultZigLink: "zig-aarch64-linux-0.14.1/zig",
 			},
 		},
 	},
@@ -164,7 +166,7 @@ func LoadConfig(loadConfigFile string) (ConfigViper, error) {
 					Hash: "d9bfa25ec28624545c222992e1b00673b7c9ca5eb15393c40369f10b28f9c932",
 					Type: ArchiveTypeTarGz,
 					Links: map[string]string{
-						"/usr/local/bin/fd": "fd-v10.2.0-x86_64-unknown-linux-musl/fd",
+						"/opt/nvim-mindevc/bin/fd": "fd-v10.2.0-x86_64-unknown-linux-musl/fd",
 					},
 				},
 				ToolArch_aarch64: {
@@ -172,7 +174,7 @@ func LoadConfig(loadConfigFile string) (ConfigViper, error) {
 					Hash: "4e8e596646d047d904f2c5ca74b39dccc69978b6e1fb101094e534b0b59c1bb0",
 					Type: ArchiveTypeTarGz,
 					Links: map[string]string{
-						"/usr/local/bin/fd": "fd-v10.2.0-aarch64-unknown-linux-musl/fd",
+						"/opt/nvim-mindevc/bin/fd": "fd-v10.2.0-aarch64-unknown-linux-musl/fd",
 					},
 				},
 			},
@@ -185,7 +187,7 @@ func LoadConfig(loadConfigFile string) (ConfigViper, error) {
 					Hash: "4cf9f2741e6c465ffdb7c26f38056a59e2a2544b51f7cc128ef28337eeae4d8e",
 					Type: ArchiveTypeTarGz,
 					Links: map[string]string{
-						"/usr/local/bin/rg": "ripgrep-14.1.1-x86_64-unknown-linux-musl/rg",
+						"/opt/nvim-mindevc/bin/rg": "ripgrep-14.1.1-x86_64-unknown-linux-musl/rg",
 					},
 				},
 				ToolArch_aarch64: {
@@ -193,7 +195,7 @@ func LoadConfig(loadConfigFile string) (ConfigViper, error) {
 					Hash: "e6512cb9d3d53050022b9236edd2eff4244cea343a451bfb3c008af23d0000e5",
 					Type: ArchiveTypeTarGz,
 					Links: map[string]string{
-						"/usr/local/bin/rg": "ripgrep-14.1.1-armv7-unknown-linux-musl/rg",
+						"/opt/nvim-mindevc/bin/rg": "ripgrep-14.1.1-armv7-unknown-linux-musl/rg",
 					},
 				},
 			},
@@ -206,7 +208,7 @@ func LoadConfig(loadConfigFile string) (ConfigViper, error) {
 					Hash: "bbc4136d03ab138b1ad66fa4fc051bafc6cc7ffae632b069a53657279a450de3",
 					Type: ArchiveTypeBin,
 					Links: map[string]string{
-						"/usr/local/bin/gosu": "$bin",
+						"/opt/nvim-mindevc/bin/gosu": "$bin",
 					},
 				},
 				ToolArch_aarch64: {
@@ -214,7 +216,7 @@ func LoadConfig(loadConfigFile string) (ConfigViper, error) {
 					Hash: "c3805a85d17f4454c23d7059bcb97e1ec1af272b90126e79ed002342de08389b",
 					Type: ArchiveTypeBin,
 					Links: map[string]string{
-						"/usr/local/bin/gosu": "$bin",
+						"/opt/nvim-mindevc/bin/gosu": "$bin",
 					},
 				},
 			},
@@ -227,8 +229,8 @@ func LoadConfig(loadConfigFile string) (ConfigViper, error) {
 					Hash: "0b4622d9df4fd282b5a2d222e4e0146fc409053ee15ee1979784f6c8a56cf573",
 					Type: ArchiveTypeTarXz,
 					Links: map[string]string{
-						"/usr/local/bin/curl":  "curl",
-						"/usr/local/bin/trurl": "trurl",
+						"/opt/nvim-mindevc/bin/curl":  "curl",
+						"/opt/nvim-mindevc/bin/trurl": "trurl",
 					},
 				},
 				ToolArch_aarch64: {
@@ -236,18 +238,39 @@ func LoadConfig(loadConfigFile string) (ConfigViper, error) {
 					Hash: "e0fecb5ecaba101b4b560f1035835770e7d1c151416ee84e18c813ba32b9d1dd",
 					Type: ArchiveTypeTarXz,
 					Links: map[string]string{
-						"/usr/local/bin/curl":  "curl",
-						"/usr/local/bin/trurl": "trurl",
+						"/opt/nvim-mindevc/bin/curl":  "curl",
+						"/opt/nvim-mindevc/bin/trurl": "trurl",
 					},
 				},
 			},
 		},
 		"zig": ZigTool,
+		"make": {
+			Source: ToolSourceArchive,
+			Archives: map[ConfigToolArch]ConfigToolArchive{
+				ToolArch_x86_64: {
+					Url:  "https://github.com/davidrios/static-make/releases/download/v4.4.1/make-x86_64-linux-musl.gz",
+					Hash: "add34c37b43e62b119374cb3b04ab3458b3bafa276c31489b1e65ca3dbc622c9",
+					Type: ArchiveTypeBinGz,
+					Links: map[string]string{
+						"/opt/nvim-mindevc/bin/make": "$bin",
+					},
+				},
+				ToolArch_aarch64: {
+					Url:  "https://github.com/davidrios/static-make/releases/download/v4.4.1/make-aarch64-linux-musl.gz",
+					Hash: "377e3006ac5bc3ac0a206a7f2d26b9e70949fdc44d8673b1992b3a0b0a604eb2",
+					Type: ArchiveTypeBinGz,
+					Links: map[string]string{
+						"/opt/nvim-mindevc/bin/make": "$bin",
+					},
+				},
+			},
+		},
 	})
-	configViperViper.SetDefault("install_tools", []string{"fd", "ripgrep", "gosu", "curl", "zig"})
+	configViperViper.SetDefault("install_tools", []string{"fd", "ripgrep", "gosu", "curl", "zig", "make"})
 	configViperViper.SetDefault("neovim.config_uri", "file://~/.config/nvim")
 	configViperViper.SetDefault("neovim.tag", "nightly")
-	configViperViper.SetDefault("neovim.runscript", "/usr/local/bin/nvim")
+	configViperViper.SetDefault("neovim.runscript", "/opt/nvim-mindevc/bin/nvim")
 	configViperViper.SetDefault("remote.workdir", "/opt/nvim-mindevc")
 	configViperViper.SetDefault("cache_dir", "~/.cache/nvim-mindevc")
 
@@ -365,13 +388,13 @@ func WithNvimMindevcTool(config Config) NvimMindevcTool {
 				Url:   fmt.Sprintf("https://github.com/davidrios/nvim-mindevc/releases/download/%s/nvim-mindevc-linux-aarch64.gz", NvimMindevcVersion),
 				Hash:  "e33597db93b4d6146c953c8d72f0adcbc62f8b8acdeb68e8a6512369331f84d7",
 				Type:  ArchiveTypeBinGz,
-				Links: map[string]string{"/usr/local/bin/nvim-mindevc": "$bin"},
+				Links: map[string]string{"/opt/nvim-mindevc/bin/nvim-mindevc": "$bin"},
 			},
 			ToolArch_x86_64: {
 				Url:   fmt.Sprintf("https://github.com/davidrios/nvim-mindevc/releases/download/%s/nvim-mindevc-linux-x86_64.gz", NvimMindevcVersion),
 				Hash:  "3dc66a36fd12a1b0312fe78a34d968a2f92008982d624ea5e2765d40c0923722",
 				Type:  ArchiveTypeBinGz,
-				Links: map[string]string{"/usr/local/bin/nvim-mindevc": "$bin"},
+				Links: map[string]string{"/opt/nvim-mindevc/bin/nvim-mindevc": "$bin"},
 			},
 		},
 	}

@@ -425,7 +425,7 @@ func DownloadAndExtractLocalTools(cacheDir string) error {
 	}
 
 	if err = CreateToolSymlinks(extractedTo, map[string]string{
-		filepath.Join(cacheDir, "bin", "zig"): config.ZigTool.Archives[arch].Links["/usr/local/bin/zig"],
+		filepath.Join(cacheDir, "bin", "zig"): config.ZigTool.Archives[arch].Links[config.DefaultZigLink],
 	}); err != nil {
 		return err
 	}
