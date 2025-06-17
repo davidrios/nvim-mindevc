@@ -3,78 +3,78 @@ services:
     image: ubuntu:16.04
     volumes:
       - ./ubuntu-1604:/code
-    user: '1000:1000'
+      - ./start.sh:/start.sh
     init: true
-    command: ['sleep', '365d']
+    command: ['/start.sh']
 
   ubuntu-1804:
     image: ubuntu:18.04
     volumes:
       - ./ubuntu-1804:/code
-    user: '1000:1000'
+      - ./start.sh:/start.sh
     init: true
-    command: ['sleep', '365d']
+    command: ['/start.sh']
 
   ubuntu-2204:
     image: ubuntu:22.04
     volumes:
       - ./ubuntu-2204:/code
-    user: '1000:1000'
+      - ./start.sh:/start.sh
     init: true
-    command: ['sleep', '365d']
+    command: ['/start.sh']
 
   ubuntu-2404:
     image: ubuntu:24.04
     volumes:
       - ./ubuntu-2404:/code
-    user: '1000:1000'
+      - ./start.sh:/start.sh
     init: true
-    command: ['sleep', '365d']
+    command: ['/start.sh']
 
   debian-buster:
     image: debian:buster
     volumes:
       - ./debian-buster:/code
-    user: '1000:1000'
+      - ./start.sh:/start.sh
     init: true
-    command: ['sleep', '365d']
+    command: ['/start.sh']
 
   debian-bookworm:
     image: debian:bookworm
     volumes:
       - ./debian-bookworm:/code
-    user: '1000:1000'
+      - ./start.sh:/start.sh
     init: true
-    command: ['sleep', '365d']
+    command: ['/start.sh']
 
   fedora:
     image: fedora:latest
     volumes:
       - ./fedora:/code
-    user: '1000:1000'
+      - ./start.sh:/start.sh
     init: true
-    command: ['sleep', '365d']
+    command: ['/start.sh']
 
   centos:
-    image: centos:5.11
+    image: centos:6
     volumes:
       - ./centos:/code
-    user: '1000:1000'
+      - ./start.sh:/start.sh
     init: true
-    command: ['sleep', '365d']
+    command: ['/start.sh']
 
   alpine-321:
     image: alpine:3.21
     volumes:
       - ./alpine-321:/code
-    user: '1000:1000'
+      - ./start.sh:/start.sh
     init: true
-    command: ['sleep', '365d']
+    command: ['/start.sh']
 
   alpine-320:
     image: alpine:3.20
     volumes:
       - ./alpine-320:/code
-    user: '1000:1000'
+      - ./start.sh:/start.sh
     init: true
-    command: ['sleep', '365d']
+    command: ['/start.sh']
