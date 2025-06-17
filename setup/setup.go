@@ -210,6 +210,17 @@ func RemoteSetup(myConfig config.ConfigViper) error {
 		return err
 	}
 
+	gitLink := filepath.Join(myConfig.Config.Remote.Workdir, "bin", "git")
+	if _, err := os.Lstat(gitLink); err == nil {
+		if err := os.Remove(gitLink); err != nil {
+			return fmt.Errorf("failed to remove existing symlink %s: %w", gitLink, err)
+		}
+	}
+	gitLinkTarget := filepath.Join(myConfig.Config.Remote.Workdir, "tools", "_download", "nvim-mindevc")
+	if err := os.Symlink(gitLinkTarget, gitLink); err != nil {
+		return fmt.Errorf("failed to create symlink %s -> %s: %w", gitLink, gitLinkTarget, err)
+	}
+
 	caFile := "/etc/ssl/certs/ca-certificates.crt"
 	if err := os.MkdirAll(filepath.Dir(caFile), 0o755); err != nil {
 		return err
