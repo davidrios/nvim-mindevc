@@ -17,7 +17,7 @@ import (
 	"github.com/davidrios/nvim-mindevc/utils"
 )
 
-func Setup(myConfig config.ConfigViper, devcontainer config.Devcontainer, useSelfBinary bool) error {
+func Setup(myConfig config.ConfigViper, devcontainer config.Devcontainer, skipSelfBinary bool) error {
 	if devcontainer.Spec.DockerComposeFile == "" {
 		return fmt.Errorf("dockerComposeFile property from devcontainer file must not be empty")
 	}
@@ -91,7 +91,7 @@ func Setup(myConfig config.ConfigViper, devcontainer config.Devcontainer, useSel
 
 	remoteBinary := filepath.Join(uploadDir, "nvim-mindevc")
 
-	if useSelfBinary {
+	if !skipSelfBinary {
 		cmd := exec.Command("uname", "-sm")
 		output, err := cmd.Output()
 		if err != nil {
@@ -214,6 +214,8 @@ func Setup(myConfig config.ConfigViper, devcontainer config.Devcontainer, useSel
 		return err
 	}
 	slog.Debug("out", "o", output)
+
+	slog.Info("all done")
 
 	return nil
 }

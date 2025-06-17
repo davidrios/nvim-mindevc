@@ -10,7 +10,7 @@ import (
 )
 
 var cmdDevcontainer config.Devcontainer
-var useSelfBinary bool
+var skipSelfBinary bool
 
 var setupCmd = &cobra.Command{
 	Use:   "setup",
@@ -27,7 +27,7 @@ var setupCmd = &cobra.Command{
 			log.Fatal("Error loading dev container: ", err)
 		}
 
-		err = setup.Setup(cmdConfig, cmdDevcontainer, useSelfBinary)
+		err = setup.Setup(cmdConfig, cmdDevcontainer, skipSelfBinary)
 		if err != nil {
 			log.Fatal("Error: ", err)
 		}
@@ -38,8 +38,8 @@ func init() {
 	RootCmd.AddCommand(setupCmd)
 
 	setupCmd.Flags().BoolVarP(
-		&useSelfBinary,
-		"use-self", "s",
+		&skipSelfBinary,
+		"skip-self", "S",
 		false,
-		"Use self binary on remote container if architecture matches. Mainly useful for developing")
+		"Don't use self binary on remote container even if os/architecture matches")
 }
