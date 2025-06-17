@@ -105,8 +105,32 @@ func (composeFile *ComposeFile) Exec(serviceName string, execParams ExecParams) 
 	return string(output[:]), nil
 }
 
-func (composeFile *ComposeFile) CpToService(serviceName string, src string, dest string) error {
-	cmdArgs := []string{"compose", "cp", src, fmt.Sprintf("%s:%s", serviceName, dest)}
+type CpToServiceOptions struct {
+	All        bool
+	Archive    bool
+	DryRun     bool
+	FollowLink bool
+	Index      *int
+}
+
+func (composeFile *ComposeFile) CpToService(serviceName string, src string, dest string, options CpToServiceOptions) error {
+	cmdArgs := []string{"compose", "cp"}
+	if options.All {
+		cmdArgs = append(cmdArgs, "--all")
+	}
+	if options.Archive {
+		cmdArgs = append(cmdArgs, "--archive")
+	}
+	if options.DryRun {
+		cmdArgs = append(cmdArgs, "--dry-run")
+	}
+	if options.FollowLink {
+		cmdArgs = append(cmdArgs, "--follow-link")
+	}
+	if options.Index != nil {
+		cmdArgs = append(cmdArgs, "--index", fmt.Sprint(*options.Index))
+	}
+	cmdArgs = append(cmdArgs, src, fmt.Sprintf("%s:%s", serviceName, dest))
 	cmd := exec.Command("docker", cmdArgs...)
 	slog.Debug("cmdArgs", "v", cmd.Args)
 	cmd.Dir = filepath.Dir(composeFile.FilePath)

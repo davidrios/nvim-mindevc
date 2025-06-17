@@ -26,6 +26,10 @@ func Setup(myConfig config.ConfigViper, devcontainer config.Devcontainer, useSel
 		return fmt.Errorf("service property from devcontainer file must not be empty")
 	}
 
+	if devcontainer.Spec.RemoteUser == "" {
+		return fmt.Errorf("remoteUser property from devcontainer file must not be empty")
+	}
+
 	composeFile, err := docker.LoadComposeFile(devcontainer)
 	if err != nil {
 		return fmt.Errorf("error loading compose file: %w", err)
@@ -75,12 +79,12 @@ func Setup(myConfig config.ConfigViper, devcontainer config.Devcontainer, useSel
 	}
 
 	for toolName, downloadedFile := range downloaded {
-		err = composeFile.CpToService(serviceName, downloadedFile, filepath.Join(uploadDir, filepath.Base(downloadedFile)))
+		err = composeFile.CpToService(serviceName, downloadedFile, filepath.Join(uploadDir, filepath.Base(downloadedFile)), docker.CpToServiceOptions{})
 		if err != nil {
 			return err
 		}
 		if uncFile, _ := UncompressTool(myConfig.Config.Tools[toolName].Archives[arch].Type, downloadedFile); uncFile != "" {
-			_ = composeFile.CpToService(serviceName, uncFile, filepath.Join(uploadDir, filepath.Base(uncFile)))
+			_ = composeFile.CpToService(serviceName, uncFile, filepath.Join(uploadDir, filepath.Base(uncFile)), docker.CpToServiceOptions{})
 		}
 		slog.Debug("copied tool to remote", "file", downloadedFile)
 	}
@@ -100,7 +104,7 @@ func Setup(myConfig config.ConfigViper, devcontainer config.Devcontainer, useSel
 			if err != nil {
 				return fmt.Errorf("could not get current binary: %w", err)
 			}
-			err = composeFile.CpToService(serviceName, myPath, remoteBinary)
+			err = composeFile.CpToService(serviceName, myPath, remoteBinary, docker.CpToServiceOptions{})
 			if err != nil {
 				return err
 			}
@@ -126,7 +130,7 @@ func Setup(myConfig config.ConfigViper, devcontainer config.Devcontainer, useSel
 		return fmt.Errorf("unexpected error: %s", err)
 	}
 	remoteConfig := filepath.Join(myConfig.Config.Remote.Workdir, "config.yaml")
-	err = composeFile.CpToService(serviceName, file.Name(), remoteConfig)
+	err = composeFile.CpToService(serviceName, file.Name(), remoteConfig, docker.CpToServiceOptions{})
 	if err != nil {
 		return err
 	}
@@ -142,20 +146,67 @@ func Setup(myConfig config.ConfigViper, devcontainer config.Devcontainer, useSel
 	if err != nil {
 		return fmt.Errorf("error downloading cacerts: %w", err)
 	}
-	err = composeFile.CpToService(serviceName, file.Name(), filepath.Join(myConfig.Config.Remote.Workdir, "cacert.pem"))
+	err = composeFile.CpToService(serviceName, file.Name(), filepath.Join(myConfig.Config.Remote.Workdir, "cacert.pem"), docker.CpToServiceOptions{})
 	if err != nil {
 		return err
 	}
 
-	url, err := myConfig.Config.GetConfigURI()
+	output, err := composeFile.Exec(serviceName, docker.ExecParams{
+		Args: []string{"sh", "-l", "-c", "echo $HOME"},
+		User: devcontainer.Spec.RemoteUser,
+	})
+	if err != nil {
+		return fmt.Errorf("error getting remote user home: %w", err)
+	}
+	remoteHome := strings.TrimSpace(output)
+	if remoteHome == "/" {
+		return fmt.Errorf("error getting remote user home, got '/'")
+	}
+
+	configUri, err := myConfig.Config.GetConfigURI()
 	if err != nil {
 		return err
 	}
+	slog.Debug("got config uri", "uri", configUri, "scheme", configUri.Scheme)
 
-	slog.Debug("got URL", "url", url, "scheme", url.Scheme)
+	switch configUri.Scheme {
+	case "file":
+		configPath, err := config.ExpandHome(myConfig.Config.Neovim.ConfigURI[len("file://"):])
+		if err != nil {
+			return err
+		}
+		slog.Debug("nvim config path", "p", configPath)
+
+		output, err = composeFile.Exec(serviceName, docker.ExecParams{
+			Args: []string{"sh", "-c",
+				fmt.Sprintf(
+					"mkdir -p '%s/.config' && chown -R '%s' '%s' && test -d '%s/.config/nvim' || echo -n 'nvim_not_found'",
+					remoteHome,
+					devcontainer.Spec.RemoteUser,
+					remoteHome,
+					remoteHome)},
+			User: "root",
+		})
+		if err != nil {
+			return fmt.Errorf("error configuring user home: %w", err)
+		}
+
+		if output == "nvim_not_found" {
+			err = composeFile.CpToService(
+				serviceName, configPath, filepath.Join(remoteHome, ".config", "nvim"),
+				docker.CpToServiceOptions{FollowLink: true})
+			if err != nil {
+				return err
+			}
+		} else {
+			slog.Warn("remote nvim config dir exists, not overwritting...")
+		}
+	default:
+		return fmt.Errorf("invalid nvim config uri, skipping")
+	}
 
 	slog.Info("running remote setup, this might take a while...")
-	output, err := composeFile.Exec(serviceName, docker.ExecParams{
+	output, err = composeFile.Exec(serviceName, docker.ExecParams{
 		Args: []string{remoteBinary, "-v", "-c", remoteConfig, "remote-setup"},
 		User: "root",
 	})
