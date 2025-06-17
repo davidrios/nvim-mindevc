@@ -96,10 +96,10 @@ nvim-mindevc -d .devcontainer/devcontainer.json setup
 
 ```bash
 # View current configuration
-./nvim-mindevc show-config
+nvim-mindevc show-config
 
 # Debug configuration loading
-./nvim-mindevc -v show-config
+nvim-mindevc -v show-config
 ```
 
 ### Git Emulation
@@ -107,10 +107,12 @@ nvim-mindevc -d .devcontainer/devcontainer.json setup
 The tool includes built-in git commands for use within devcontainers, so no git installation is required for basic plugin managers like Lazy:
 
 ```bash
-nvim-mindevc git log
-nvim-mindevc git fetch
-nvim-mindevc git checkout <branch>
-nvim-mindevc git ls-files
+# symlink to `git`
+ln -s nvim-mindevc git
+./git log
+./git fetch
+./git checkout <branch>
+./git ls-files
 ```
 
 
