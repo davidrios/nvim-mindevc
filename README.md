@@ -152,14 +152,15 @@ The project includes test containers for various Linux distributions:
 
 ## Remote Tools
 
-Tools that can will installed in the container:
+Tools that will be installed by default in the container:
 
 - **Neovim**: Latest nightly builds, compiled from source
 - **Zig**: Cross-platform build system
 - **ripgrep**: Fast text search tool
 - **fd**: Modern find replacement
 - **make**: Static build of GNU Make
-- **Custom tools**: Extensible tool configuration system
+
+It's also possible to configure custom tools.
 
 
 ## License
