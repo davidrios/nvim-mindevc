@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"log"
 	"log/slog"
 
 	"github.com/davidrios/nvim-mindevc/git"
@@ -11,9 +12,11 @@ var gitFetchOptions git.FetchOptions
 
 var gitFetchCmd = &cobra.Command{
 	Use: "fetch",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	Run: func(cmd *cobra.Command, args []string) {
 		slog.Debug("args", "a", args)
-		return git.Fetch(".", gitFetchOptions)
+		if err := git.Fetch(".", gitFetchOptions); err != nil {
+			log.Fatal("error: ", err)
+		}
 	},
 }
 

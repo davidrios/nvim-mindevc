@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"log"
 	"log/slog"
 
 	"github.com/davidrios/nvim-mindevc/git"
@@ -11,9 +12,11 @@ var gitLsFilesOptions git.LsFilesOptions
 
 var gitLsFilesCmd = &cobra.Command{
 	Use: "ls-files",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	Run: func(cmd *cobra.Command, args []string) {
 		slog.Debug("args", "a", args)
-		return git.LsFiles(".", gitLsFilesOptions)
+		if err := git.LsFiles(".", gitLsFilesOptions); err != nil {
+			log.Fatal("error: ", err)
+		}
 	},
 }
 

@@ -1,67 +1,29 @@
 package cmd
 
 import (
+	"log"
 	"log/slog"
-	"os"
-	"path/filepath"
-	"strings"
 
-	mygit "github.com/davidrios/nvim-mindevc/git"
-	"github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/davidrios/nvim-mindevc/git"
 	"github.com/spf13/cobra"
 )
 
-var cloneFilter string
-var cloneBranch string
-var cloneOrigin string
-var cloneProgress bool
-var cloneConfig string
-var cloneRecurseSubmodules bool
+var gitCloneOptions git.CloneOptions
 
 var gitCloneCmd = &cobra.Command{
 	Use:  "clone <repository> [<directory>]",
 	Args: cobra.MinimumNArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
+	Run: func(cmd *cobra.Command, args []string) {
 		slog.Debug("args", "a", args)
 
-		var directory string
-		if len(args) == 1 {
-			directory = strings.Replace(filepath.Base(args[0]), ".git", "", -1)
-		} else {
-			directory = args[1]
+		gitCloneOptions.Url = args[0]
+		if len(args) > 1 {
+			gitCloneOptions.Directory = args[1]
 		}
 
-		options := git.CloneOptions{
-			URL:      args[0],
-			Progress: os.Stderr,
+		if err := git.Clone(gitCloneOptions); err != nil {
+			log.Fatal("error: ", err)
 		}
-		if cloneBranch != "" {
-			options.ReferenceName = plumbing.ReferenceName(cloneBranch)
-		}
-		if cloneOrigin != "" {
-			options.RemoteName = cloneOrigin
-		}
-		if cloneRecurseSubmodules {
-			options.RecurseSubmodules = git.DefaultSubmoduleRecursionDepth
-		}
-		// if cloneFilter != "" {
-		// 	options.Filter = cloneFilter
-		// }
-
-		slog.Info("cloning repository, please wait...", "target_dir", directory)
-		r, err := git.PlainClone(directory, false, &options)
-		if err != nil {
-			return err
-		}
-
-		err = mygit.CreateRemoteHeads(directory, r)
-		if err != nil {
-			return err
-		}
-
-		slog.Info("done cloning")
-		return nil
 	},
 }
 
@@ -69,37 +31,37 @@ func init() {
 	gitCmd.AddCommand(gitCloneCmd)
 
 	gitCloneCmd.Flags().StringVar(
-		&cloneFilter,
+		&gitCloneOptions.Filter,
 		"filter",
 		"",
 		"")
 
 	gitCloneCmd.Flags().StringVarP(
-		&cloneBranch,
+		&gitCloneOptions.Branch,
 		"branch", "b",
 		"",
 		"")
 
 	gitCloneCmd.Flags().StringVar(
-		&cloneOrigin,
+		&gitCloneOptions.Origin,
 		"origin",
 		"",
 		"")
 
 	gitCloneCmd.Flags().StringVarP(
-		&cloneConfig,
+		&gitCloneOptions.Config,
 		"config", "c",
 		"",
 		"")
 
 	gitCloneCmd.Flags().BoolVar(
-		&cloneProgress,
+		&gitCloneOptions.Progress,
 		"progress",
 		false,
 		"")
 
 	gitCloneCmd.Flags().BoolVar(
-		&cloneRecurseSubmodules,
+		&gitCloneOptions.RecurseSubmodules,
 		"recurse-submodules",
 		false,
 		"")

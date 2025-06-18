@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"log"
 	"log/slog"
 
 	"github.com/davidrios/nvim-mindevc/git"
@@ -13,7 +14,7 @@ var limit = [10]bool{}
 
 var gitLogCmd = &cobra.Command{
 	Use: "log [<revision-range>]",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	Run: func(cmd *cobra.Command, args []string) {
 		slog.Debug("args", "a", args)
 		var revRange string
 		if len(args) > 0 {
@@ -25,7 +26,9 @@ var gitLogCmd = &cobra.Command{
 			}
 		}
 
-		return git.PrintLog(".", revRange, gitLogOptions)
+		if err := git.PrintLog(".", revRange, gitLogOptions); err != nil {
+			log.Fatal("error: ", err)
+		}
 	},
 }
 

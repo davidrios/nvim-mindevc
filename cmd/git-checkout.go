@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"log"
 	"log/slog"
 
 	"github.com/davidrios/nvim-mindevc/git"
@@ -12,12 +13,14 @@ var gitCheckoutOptions git.CheckoutOptions
 var gitCheckoutCmd = &cobra.Command{
 	Use:  "checkout [<branch> | <commit>]",
 	Args: cobra.MinimumNArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
+	Run: func(cmd *cobra.Command, args []string) {
 		slog.Debug("args", "a", args)
 
 		gitCheckoutOptions.Branch = args[0]
 
-		return git.Checkout(".", gitCheckoutOptions)
+		if err := git.Checkout(".", gitCheckoutOptions); err != nil {
+			log.Fatal("error: ", err)
+		}
 	},
 }
 
