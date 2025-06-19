@@ -4,7 +4,7 @@ A Go CLI tool that automates the setup of Neovim inside Docker devcontainers. It
 
 Demo:
 
-<a href="https://asciinema.org/a/D59B8lyeHu7ryfNMdhor1k22Q" target="_blank"><img src="https://asciinema.org/a/D59B8lyeHu7ryfNMdhor1k22Q.svg" /></a>
+<a href="https://asciinema.org/a/juXKraph4GARMnTtfsGhVyd44" target="_blank"><img src="https://asciinema.org/a/juXKraph4GARMnTtfsGhVyd44.svg" /></a>
 
 ## Features
 
