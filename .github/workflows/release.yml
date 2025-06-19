@@ -104,6 +104,11 @@ jobs:
             echo "tag_name=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
             echo "release_name=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
             echo "prerelease=false" >> $GITHUB_OUTPUT
+            echo "release_notes<<EOF" >> $GITHUB_OUTPUT
+            git tag -l ${GITHUB_REF#refs/tags/} --format '%(contents:subject)' >> $GITHUB_OUTPUT
+            echo >> $GITHUB_OUTPUT
+            git tag -l ${GITHUB_REF#refs/tags/} --format '%(contents:body)' >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
           else
             echo "is_tag_release=false" >> $GITHUB_OUTPUT
             echo "tag_name=nightly" >> $GITHUB_OUTPUT
@@ -129,7 +134,7 @@ jobs:
           files: |
             release-assets/*
           body: |
-            ${{ steps.release_info.outputs.is_tag_release == 'true' && 'Release' || 'Nightly build from main branch' }}
+            ${{ steps.release_info.outputs.is_tag_release == 'true' && steps.release_info.outputs.release_notes || 'Nightly build from main branch' }}
 
             ## Installation
 
