@@ -4,8 +4,6 @@ on:
   push:
     tags:
       - 'v*'
-  # schedule:
-  #   - cron: '0 2 * * *'
   workflow_dispatch:
 
 jobs:
@@ -96,6 +94,19 @@ jobs:
           sha256sum * > checksums.txt
           cat checksums.txt
 
+      - name: Get tag information
+        id: tag_info
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+          TAG_SUBJECT=$(git tag -l --format='%(contents:subject)' "$TAG_NAME")
+          echo "tag_subject=$TAG_SUBJECT" >> $GITHUB_OUTPUT
+          TAG_BODY=$(git tag -l --format='%(contents:body)' "$TAG_NAME")
+          echo "tag_body<<EOF" >> $GITHUB_OUTPUT
+          echo "$TAG_BODY" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
       - name: Determine release type and tag
         id: release_info
         run: |
@@ -104,13 +115,6 @@ jobs:
             echo "tag_name=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
             echo "release_name=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
             echo "prerelease=false" >> $GITHUB_OUTPUT
-            {
-              echo "release_desc<<EOOOOF"
-              git tag -l "${GITHUB_REF#refs/tags/}" --format '%(contents:subject)'
-              echo
-              git tag -l "${GITHUB_REF#refs/tags/}" --format '%(contents:body)'
-              echo "EOOOOF"
-            }>> $GITHUB_OUTPUT
           else
             echo "is_tag_release=false" >> $GITHUB_OUTPUT
             echo "tag_name=nightly" >> $GITHUB_OUTPUT
@@ -136,7 +140,9 @@ jobs:
           files: |
             release-assets/*
           body: |
-            ${{ steps.release_info.outputs.is_tag_release == 'true' && steps.release_info.outputs.release_desc || 'Nightly build from main branch' }}
+            ## ${{ steps.tag_info.outputs.tag_subject || (steps.release_info.outputs.is_tag_release == 'true' && 'Release' || 'Nightly build from main branch') }}
+
+            ${{ steps.tag_info.outputs.tag_body }}
 
             ## Installation
 
