@@ -12,10 +12,13 @@ var gitShowVersion bool
 var gitCmd = &cobra.Command{
 	Use:   "git",
 	Short: "Minimal git implementation",
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		if gitShowVersion {
 			fmt.Println("git version 2.38.5")
+			return nil
 		}
+
+		return fmt.Errorf("no command provided")
 	},
 }
 
