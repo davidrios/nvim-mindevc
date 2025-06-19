@@ -98,11 +98,9 @@ jobs:
         id: tag_info
         if: startsWith(github.ref, 'refs/tags/')
         run: |
-          TAG_NAME=${GITHUB_REF#refs/tags/}
-          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
-          TAG_SUBJECT=$(git tag -l --format='%(contents:subject)' "$TAG_NAME")
+          TAG_SUBJECT=$(git for-each-ref "${{ github.ref }}" --format='%(contents:subject)')
           echo "tag_subject=$TAG_SUBJECT" >> $GITHUB_OUTPUT
-          TAG_BODY=$(git tag -l --format='%(contents:body)' "$TAG_NAME")
+          TAG_BODY=$(git for-each-ref "${{ github.ref }}" --format='%(contents:body)')
           echo "tag_body<<EOF" >> $GITHUB_OUTPUT
           echo "$TAG_BODY" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
@@ -114,7 +112,8 @@ jobs:
             echo "is_tag_release=true" >> $GITHUB_OUTPUT
             echo "tag_name=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
             echo "release_name=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
-            echo "prerelease=false" >> $GITHUB_OUTPUT
+            PRERELEASE=$((echo '${{ github.ref_name }}' | grep -qP 'v.+-') && echo true || echo false)
+            echo "prerelease=$PRERELEASE" >> $GITHUB_OUTPUT
           else
             echo "is_tag_release=false" >> $GITHUB_OUTPUT
             echo "tag_name=nightly" >> $GITHUB_OUTPUT
