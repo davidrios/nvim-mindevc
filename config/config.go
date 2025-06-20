@@ -12,7 +12,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-const VERSION = "v0.0.4"
+const VERSION = "v0.0.5"
 
 type Devcontainer struct {
 	Spec struct {
