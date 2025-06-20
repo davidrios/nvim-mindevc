@@ -23,7 +23,13 @@ func IsAlpine() (bool, error) {
 	}
 	_arch := strings.TrimSpace(string(output))
 	_, err = os.Stat(fmt.Sprintf("/lib/ld-musl-%s.so.1", _arch))
-	return err == nil, nil
+
+	hasMusl := err == nil
+
+	cmd = exec.Command("apk", "--version")
+	_, err = cmd.Output()
+
+	return hasMusl && err == nil, nil
 }
 
 func DownloadAndExtractNeovim(workDir string, tag string, noCache bool) (string, error) {
@@ -61,30 +67,6 @@ func DownloadAndExtractNeovim(workDir string, tag string, noCache bool) (string,
 	slog.Debug("downloaded and extracted")
 	neovimSrc := filepath.Join(workDir, "neovim-"+tag)
 
-	isAlpine, err := IsAlpine()
-	if err != nil {
-		return "", err
-	}
-	if isAlpine {
-		main_c := filepath.Join(neovimSrc, "src/nvim/main.c")
-
-		if err = utils.ReplaceInFile(
-			main_c,
-			"main(int argc, char **argv)",
-			"main(int argc, char **argv, char **envp)",
-		); err != nil {
-			return "", err
-		}
-		if err = utils.ReplaceInFile(
-			main_c,
-			"argv0 = argv[0];",
-			"extern char **__environ; __environ = envp; argv0 = argv[0];",
-		); err != nil {
-			return "", err
-		}
-
-	}
-
 	return neovimSrc, nil
 }
 
@@ -96,6 +78,17 @@ func CompileNeovim(zigBin string, neovimSrc string) error {
 	cmd.Env = append(cmd.Env, "VIM="+neovimSrc)
 	if err := cmd.Run(); err != nil {
 		slog.Info("compiling neovim, this may take a while...")
+
+		isAlpine, err := IsAlpine()
+		if err != nil {
+			return err
+		}
+		if isAlpine {
+			cmd = exec.Command("apk", "add", "gcc", "musl-dev")
+			if err := cmd.Run(); err != nil {
+				return fmt.Errorf("error compiling, %w, %s", err, cmd.Stderr)
+			}
+		}
 
 		cmd = exec.Command(zigBin, "build", "nvim", "--release=fast", "-Dluajit")
 		cmd.Dir = neovimSrc
