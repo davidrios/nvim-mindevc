@@ -114,6 +114,14 @@ func Setup(myConfig config.ConfigViper, devcontainer config.Devcontainer, skipSe
 		}
 	}
 
+	_, err = composeFile.Exec(serviceName, docker.ExecParams{
+		Args: []string{"chmod", "+x", remoteBinary},
+		User: "root",
+	})
+	if err != nil {
+		return err
+	}
+
 	yamlData, err := yaml.Marshal(myConfig.Viper.AllSettings())
 	if err != nil {
 		return fmt.Errorf("Failed to marshal config to YAML: %w", err)
