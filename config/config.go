@@ -251,16 +251,16 @@ func LoadConfig(loadConfigFile string) (ConfigViper, error) {
 			Source: ToolSourceArchive,
 			Archives: map[ConfigToolArch]ConfigToolArchive{
 				ToolArch_x86_64: {
-					Url:  "https://github.com/davidrios/static-make/releases/download/v4.4.1/make-x86_64-linux-musl.gz",
-					Hash: "add34c37b43e62b119374cb3b04ab3458b3bafa276c31489b1e65ca3dbc622c9",
+					Url:  "https://github.com/davidrios/static-make/releases/download/v4.4.1+1/make-x86_64-linux-musl.gz",
+					Hash: "b6a734830c6be3bfc7e0a2f39b4923059132df1439c72c7a03ab65f4df610bb9",
 					Type: ArchiveTypeBinGz,
 					Links: map[string]string{
 						"/opt/nvim-mindevc/bin/make": "$bin",
 					},
 				},
 				ToolArch_aarch64: {
-					Url:  "https://github.com/davidrios/static-make/releases/download/v4.4.1/make-aarch64-linux-musl.gz",
-					Hash: "377e3006ac5bc3ac0a206a7f2d26b9e70949fdc44d8673b1992b3a0b0a604eb2",
+					Url:  "https://github.com/davidrios/static-make/releases/download/v4.4.1+1/make-aarch64-linux-musl.gz",
+					Hash: "13f1311198ba6826d92ee6b7c0d6406a27db441b1171598c075bf44dfceee2f9",
 					Type: ArchiveTypeBinGz,
 					Links: map[string]string{
 						"/opt/nvim-mindevc/bin/make": "$bin",
