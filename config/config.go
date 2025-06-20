@@ -12,7 +12,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-const VERSION = "v0.0.5"
+const VERSION = "nightly"
 
 type Devcontainer struct {
 	Spec struct {
@@ -197,7 +197,7 @@ func LoadConfig(loadConfigFile string) (ConfigViper, error) {
 					Hash: "e6512cb9d3d53050022b9236edd2eff4244cea343a451bfb3c008af23d0000e5",
 					Type: ArchiveTypeTarGz,
 					Links: map[string]string{
-						"/opt/nvim-mindevc/bin/rg": "ripgrep-14.1.1-armv7-unknown-linux-musl/rg",
+						"/opt/nvim-mindevc/bin/rg": "ripgrep-14.1.1-armv7-unknown-linux-musleabi/rg",
 					},
 				},
 			},
