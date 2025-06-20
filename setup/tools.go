@@ -20,6 +20,26 @@ import (
 )
 
 func DownloadToolHttp(downloadDir string, rawUrl string, parsedUrl *url.URL, expectedHash string) (string, error) {
+	if strings.Index(expectedHash, "https://") == 0 || strings.Index(expectedHash, "http://") == 0 {
+		tmpFile, err := os.CreateTemp("", "")
+		if err != nil {
+			return "", err
+		}
+		defer os.Remove(tmpFile.Name())
+		tmpFile.Close()
+
+		err = utils.DownloadFileHttp(expectedHash, tmpFile.Name())
+		if err != nil {
+			return "", err
+		}
+
+		fname := filepath.Base(parsedUrl.Path)
+		expectedHash, err = utils.GetHashInFile(tmpFile.Name(), fname)
+		if err != nil {
+			return "", fmt.Errorf("error for %s: %w", fname, err)
+		}
+	}
+
 	cachedFilename := filepath.Join(downloadDir, expectedHash)
 	slog.Debug("download cache name", "n", cachedFilename)
 

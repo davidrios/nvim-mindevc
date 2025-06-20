@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/davidrios/nvim-mindevc/config"
@@ -21,11 +22,16 @@ func TestDownloadToolHttp_Success(t *testing.T) {
 	}
 	defer os.RemoveAll(dir)
 
+	const HASHES_FILE = `6ae8a75555209fd6c44157c0aed8016e763ff435a19cf186f76863140143ff72  testfile.tar.gz
+6292c8b17c54333d0449794f91ca2287c29e0adc1bcf06795c54bc6aa1a003e6  testfile2.tar.gz
+5292c8b17c54333d0449794f91ca2287c29e0adc1bcf06795c54bc6aa1a003e6  testfile3.tar.gz`
+
 	testTable := []struct {
-		fname    string
-		content  string
-		hash     string
-		hashFail bool
+		fname        string
+		content      string
+		hash         string
+		expectedPath string
+		hashFail     bool
 	}{
 		{
 			fname:   "testfile.tar.gz",
@@ -36,25 +42,50 @@ func TestDownloadToolHttp_Success(t *testing.T) {
 			content: "another content",
 			hash:    "6292c8b17c54333d0449794f91ca2287c29e0adc1bcf06795c54bc6aa1a003e6"},
 		{
+			fname:        "testfile2.tar.gz",
+			content:      "another content",
+			hash:         "/checksums.txt",
+			expectedPath: "6292c8b17c54333d0449794f91ca2287c29e0adc1bcf06795c54bc6aa1a003e6"},
+		{
 			fname:    "testfile3.tar.gz",
 			content:  "another content",
 			hash:     "5292c8b17c54333d0449794f91ca2287c29e0adc1bcf06795c54bc6aa1a003e6",
 			hashFail: true},
+		{
+			fname:        "testfile3.tar.gz",
+			content:      "another content",
+			hash:         "/checksums.txt",
+			expectedPath: "5292c8b17c54333d0449794f91ca2287c29e0adc1bcf06795c54bc6aa1a003e6",
+			hashFail:     true},
+		{
+			fname:        "testfile4.tar.gz",
+			content:      "another content",
+			hash:         "/checksums.txt",
+			expectedPath: "6292c8b17c54333d0449794f91ca2287c29e0adc1bcf06795c54bc6aa1a003e6",
+			hashFail:     true},
 	}
 
 	for _, tv := range testTable {
 		t.Run(tv.fname, func(t *testing.T) {
 			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusOK)
-				_, _ = w.Write([]byte(tv.content))
+				if r.URL.String() == "/checksums.txt" {
+					_, _ = w.Write([]byte(HASHES_FILE))
+				} else {
+					_, _ = w.Write([]byte(tv.content))
+				}
 			}))
 			defer ts.Close()
 
 			burl := fmt.Sprintf("%s/%s", ts.URL, tv.fname)
 			parsedUrl, _ := url.Parse(burl)
-			_, err = DownloadToolHttp(dir, burl, parsedUrl, tv.hash)
+			hash := tv.hash
+			if hash[0] == '/' {
+				hash = fmt.Sprintf("%s%s", ts.URL, tv.hash)
+			}
+			_, err = DownloadToolHttp(dir, burl, parsedUrl, hash)
 			if err != nil {
-				if tv.hashFail && err.Error() == "hashes do not match" {
+				if tv.hashFail && (err.Error() == "hashes do not match" || strings.Contains(err.Error(), "hash not found")) {
 					return
 				}
 
@@ -62,6 +93,9 @@ func TestDownloadToolHttp_Success(t *testing.T) {
 			}
 
 			expectedPath := filepath.Join(dir, tv.hash)
+			if tv.expectedPath != "" {
+				expectedPath = filepath.Join(dir, tv.expectedPath)
+			}
 
 			if _, err := os.Stat(expectedPath); os.IsNotExist(err) {
 				t.Fatalf("Expected file to be created at %s", expectedPath)

@@ -3,6 +3,7 @@ package utils
 import (
 	"archive/tar"
 	"archive/zip"
+	"bufio"
 	"bytes"
 	"fmt"
 	"io"
@@ -37,6 +38,32 @@ func DownloadFileHttp(rawUrl string, saveTo string) error {
 	}
 
 	return nil
+}
+
+func GetHashInFile(hashesFile string, fname string) (string, error) {
+	fp, err := os.Open(hashesFile)
+	if err != nil {
+		return "", err
+	}
+	defer fp.Close()
+
+	scanner := bufio.NewScanner(fp)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if len(line) < 67 {
+			continue
+		}
+
+		if line[66:] == fname {
+			return line[:64], nil
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return "", err
+	}
+
+	return "", fmt.Errorf("hash not found")
 }
 
 func TarFolder(src string, dest string) error {

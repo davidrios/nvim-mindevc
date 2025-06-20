@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"log"
 	"log/slog"
 	"os"
@@ -13,13 +14,22 @@ import (
 
 var RootCmd = &cobra.Command{
 	Use:   "nvim-mindevc",
-	Short: "Setup neovim inside devcontainer.",
+	Short: "Setup neovim in a remote environment.",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if showVersion {
+			fmt.Println("nvim-mindevc", config.VERSION)
+			return nil
+		}
+
+		return fmt.Errorf("no command or flags provided")
+	},
 }
 
 var cmdConfig config.ConfigViper
 var configFile string
 var devcontainerFile string
 var verbose bool
+var showVersion bool
 
 func init() {
 	cobra.OnInitialize(initConfig)
@@ -30,6 +40,12 @@ func init() {
 	}
 
 	if subcommand != "git" {
+		RootCmd.Flags().BoolVar(
+			&showVersion,
+			"version",
+			false,
+			"show version and exit")
+
 		RootCmd.PersistentFlags().BoolVarP(
 			&verbose,
 			"verbose", "v",
@@ -47,8 +63,6 @@ func init() {
 			"devcontainer", "d",
 			"",
 			"load devcontainer spec from this file")
-
-		// GlobalConfig.RuntimeViper.BindPFlag("port", rootCmd.PersistentFlags().Lookup("port"))
 	}
 }
 

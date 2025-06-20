@@ -12,6 +12,8 @@ import (
 	"github.com/spf13/viper"
 )
 
+const VERSION = "v0.0.3"
+
 type Devcontainer struct {
 	Spec struct {
 		Name              string
@@ -373,8 +375,6 @@ type NvimMindevcTool struct {
 	Tools        ConfigTools
 }
 
-const NvimMindevcVersion string = "nightly"
-
 func WithNvimMindevcTool(config Config) NvimMindevcTool {
 	installTools := config.InstallTools
 	tools := make(ConfigTools, len(config.Tools)+1)
@@ -385,14 +385,14 @@ func WithNvimMindevcTool(config Config) NvimMindevcTool {
 		Source: ToolSourceArchive,
 		Archives: map[ConfigToolArch]ConfigToolArchive{
 			ToolArch_aarch64: {
-				Url:   fmt.Sprintf("https://github.com/davidrios/nvim-mindevc/releases/download/%s/nvim-mindevc-linux-aarch64.gz", NvimMindevcVersion),
-				Hash:  "e33597db93b4d6146c953c8d72f0adcbc62f8b8acdeb68e8a6512369331f84d7",
+				Url:   fmt.Sprintf("https://github.com/davidrios/nvim-mindevc/releases/download/%s/nvim-mindevc-linux-aarch64.gz", VERSION),
+				Hash:  fmt.Sprintf("https://github.com/davidrios/nvim-mindevc/releases/download/%s/checksums.txt", VERSION),
 				Type:  ArchiveTypeBinGz,
 				Links: map[string]string{"/opt/nvim-mindevc/bin/nvim-mindevc": "$bin"},
 			},
 			ToolArch_x86_64: {
-				Url:   fmt.Sprintf("https://github.com/davidrios/nvim-mindevc/releases/download/%s/nvim-mindevc-linux-x86_64.gz", NvimMindevcVersion),
-				Hash:  "3dc66a36fd12a1b0312fe78a34d968a2f92008982d624ea5e2765d40c0923722",
+				Url:   fmt.Sprintf("https://github.com/davidrios/nvim-mindevc/releases/download/%s/nvim-mindevc-linux-x86_64.gz", VERSION),
+				Hash:  fmt.Sprintf("https://github.com/davidrios/nvim-mindevc/releases/download/%s/checksums.txt", VERSION),
 				Type:  ArchiveTypeBinGz,
 				Links: map[string]string{"/opt/nvim-mindevc/bin/nvim-mindevc": "$bin"},
 			},
