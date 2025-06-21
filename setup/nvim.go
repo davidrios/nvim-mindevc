@@ -90,7 +90,7 @@ func CompileNeovim(zigBin string, neovimSrc string) error {
 			}
 		}
 
-		cmd = exec.Command(zigBin, "build", "nvim", "--release=fast", "-Dluajit")
+		cmd = exec.Command(zigBin, "build", "nvim", "--release=fast")
 		cmd.Dir = neovimSrc
 		if err := cmd.Run(); err != nil {
 			return fmt.Errorf("error compiling, %w, %s", err, cmd.Stderr)
