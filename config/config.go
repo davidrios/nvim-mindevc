@@ -106,7 +106,9 @@ type Config struct {
 	Tools            ConfigTools
 	CacheDir         string `mapstructure:"cache_dir"`
 	Remote           struct {
-		Workdir string
+		User        string
+		Workdir     string
+		ExtraBashRc string `mapstructure:"extra_bash_rc"`
 	}
 
 	FilePath string `mapstructure:"-"`

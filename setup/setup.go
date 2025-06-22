@@ -122,6 +122,8 @@ func Setup(myConfig config.ConfigViper, devcontainer config.Devcontainer, skipSe
 		return err
 	}
 
+	myConfig.Viper.Set("remote.user", devcontainer.Spec.RemoteUser)
+
 	yamlData, err := yaml.Marshal(myConfig.Viper.AllSettings())
 	if err != nil {
 		return fmt.Errorf("Failed to marshal config to YAML: %w", err)
@@ -336,6 +338,59 @@ VIM="%s" "%s" "$@"`, neovimSrc, filepath.Join(neovimSrc, "zig-out", "bin", "nvim
 	}
 	if err := os.Chmod(myConfig.Config.Neovim.Runscript, 0o755); err != nil {
 		return err
+	}
+
+	if myConfig.Config.Remote.ExtraBashRc != "" {
+		output, err := exec.Command("getent", "passwd", myConfig.Config.Remote.User).Output()
+		if err != nil {
+			return err
+		}
+		userHome := strings.Split(string(output), ":")[5]
+		if userHome == "/" || userHome == "" {
+			return fmt.Errorf("error getting remote user home")
+		}
+		extraRc := filepath.Join(userHome, ".bashrc_extra")
+
+		file, err := os.Create(extraRc)
+		if err != nil {
+			return fmt.Errorf("error opening file: %w", err)
+		}
+
+		if _, err := io.Copy(file, bytes.NewReader([]byte(myConfig.Config.Remote.ExtraBashRc))); err != nil {
+			file.Close()
+			return fmt.Errorf("unexpected error: %s", err)
+		}
+		file.Close()
+
+		rcFile := filepath.Join(userHome, ".bashrc")
+
+		file, err = os.OpenFile(rcFile, os.O_CREATE|os.O_RDWR, 0o600)
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+
+		lineToAdd := ". " + extraRc
+		hasLine, err := utils.FileContainsLine(file, lineToAdd)
+		if err != nil {
+			return err
+		}
+		if !hasLine {
+			_, err = file.Seek(0, 2)
+			if err != nil {
+				return err
+			}
+			_, err = file.WriteString("\n" + lineToAdd + "\n")
+			if err != nil {
+				return err
+			}
+		}
+		file.Close()
+
+		err = exec.Command("chown", "-R", myConfig.Config.Remote.User, userHome).Run()
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

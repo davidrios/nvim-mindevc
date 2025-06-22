@@ -66,6 +66,21 @@ func GetHashInFile(hashesFile string, fname string) (string, error) {
 	return "", fmt.Errorf("hash not found")
 }
 
+func FileContainsLine(fp io.Reader, lineToFind string) (bool, error) {
+	scanner := bufio.NewScanner(fp)
+	for scanner.Scan() {
+		if scanner.Text() == lineToFind {
+			return true, nil
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return false, err
+	}
+
+	return false, nil
+}
+
 func TarFolder(src string, dest string) error {
 	outFile, err := os.Create(dest)
 	if err != nil {
